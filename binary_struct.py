@@ -19,11 +19,11 @@ def _create_fn(name, local_params: List[str] = [], lines: List[str] = ['pass']):
     function with the given locals and
     """
 
-    lines_as_str = "\n    ".join(lines)
-    foo_text = f'def {name}({" ,".join(local_params)}):{lines_as_str}'
+    lines_as_str = '\n    ' + '\n    '.join(lines)
+    fn_text = f'def {name}({", ".join(local_params)}):{lines_as_str}'
 
     ns = {}
-    exec(foo_text, None, ns)
+    exec(fn_text, None, ns)
 
     return ns[name]
 
@@ -33,9 +33,7 @@ def _create_init_fn(attributes: dict = {}):
     The created function will set the class annotations
     """
 
-    init_txt = []
-    for name, kind in attributes.items():
-        init_txt.append(f'self.{name} = {kind.__name__}({name})\n')
+    init_txt = [f'self.{name} = {kind.__name__}({name})' for name, kind in attributes.items()]
 
     return _create_fn('__init__', ['self'] + list(attributes.keys()), init_txt)
 
