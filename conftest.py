@@ -1,4 +1,7 @@
 import pytest
+import ctypes
+
+from ctypes import c_void_p
 from binary_struct import binary_struct
 
 
@@ -17,5 +20,14 @@ def ComplexClass():
         num: int
         line: str
         buf: bytes
+
+    return A
+
+@pytest.fixture
+def ModuleClass():
+    @binary_struct
+    class A:
+        ptr: c_void_p
+        size: ctypes.c_uint32
 
     return A
