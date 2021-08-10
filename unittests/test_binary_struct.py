@@ -1,3 +1,4 @@
+import ctypes
 from binary_struct import binary_struct
 
 
@@ -44,3 +45,24 @@ def test_initialization_valid_complex_class(ComplexClass):
 
     assert a.buf == b'\xde\xad\xbe\xef'
     assert isinstance(a.buf, bytes)
+
+def test_initialization_valid_type_alias():
+    tmp = bytes
+
+    @binary_struct
+    class A:
+        b: tmp
+
+    a = A(b'\xff')
+
+    assert a.b == b'\xff'
+    assert isinstance(a.b, bytes)
+
+def test_initialization_valid_class_with_modules(ModuleClass):
+    a = ModuleClass(12345678, 0x62)
+
+    assert bytes(a.ptr) == b'Na\xbc\x00\x00\x00\x00\x00'
+    assert isinstance(a.ptr, ctypes.c_void_p)
+
+    assert bytes(a.size) == b'\x62\x00\x00\x00'
+    assert isinstance(a.size, ctypes.c_uint32)
