@@ -10,3 +10,12 @@ def SimpleClass():
 
     return A
 
+@pytest.fixture
+def ComplexClass():
+    @binary_struct
+    class A:
+        num: int
+        line: str
+        buf: bytes
+
+    return A
