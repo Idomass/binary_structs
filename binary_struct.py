@@ -30,6 +30,32 @@ def _create_fn(name, local_params: List[str] = [], lines: List[str] = ['pass'], 
 
     return ns[name]
 
+def _init_var(name: str, kind: type or List[type, int]) -> List[str]:
+    """
+    Helper function for _create_init_fn that helps to init a variable.
+    Returns the python code that is required to init that variable.
+    """
+
+    init_var = []
+    if isinstance(kind, list):
+        underlying_type, size = kind
+        kind = list
+
+        module_name =  '' if underlying_type.__module__ == 'builtins' else f'{underlying_type.__module__}.'
+
+        # TODO: try to replace it with a function that its text will be copied instead
+        init_var.append(f'if {size} < len({name}):')
+        init_var.append(f'   raise TypeError("List is bigger than given size!")')
+        init_var.append(f'self.{name} = list()')
+        init_var.append(f'for element in {name}:')
+        init_var.append(f'    self.{name}.append({module_name}{underlying_type.__name__}(element))')
+
+    else:
+        module_name =  '' if kind.__module__ == 'builtins' else f'{kind.__module__}.'
+        init_var = [f'self.{name} = {module_name}{kind.__name__}({name})']
+
+    return init_var
+
 def _create_init_fn(attributes: dict = {}, globals: dict = {}):
     """
     Create init function and return it.
@@ -38,8 +64,7 @@ def _create_init_fn(attributes: dict = {}, globals: dict = {}):
 
     init_txt = []
     for name, kind in attributes.items():
-        module_name =  '' if kind.__module__ == 'builtins' else f'{kind.__module__}.'
-        init_txt.append(f'self.{name} = {module_name}{kind.__name__}({name})')
+        init_txt.extend(_init_var(name, kind))
 
     return _create_fn('__init__', ['self'] + list(attributes.keys()), init_txt, globals)
 
