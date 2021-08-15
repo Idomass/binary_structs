@@ -56,7 +56,7 @@ def _init_var(name: str, kind: type or List[type, int]) -> List[str]:
 
     return init_var
 
-def _create_init_fn(attributes: dict = {}, globals: dict = {}):
+def _create_init_fn(attributes: dict = {}, globals: dict = {}) -> str:
     """
     Create init function and return it.
     The created function will set the class annotations
@@ -66,7 +66,16 @@ def _create_init_fn(attributes: dict = {}, globals: dict = {}):
     for name, kind in attributes.items():
         init_txt.extend(_init_var(name, kind))
 
-    return _create_fn('__init__', ['self'] + list(attributes.keys()), init_txt, globals)
+    return _create_fn('__init__', ['self'] + list(attributes.keys()), init_txt or ['pass'], globals)
+
+def _create_bytes_fn(attributes: dict = {}, globals: dict = {}) -> str:
+    lines = ['buf = b""']
+    for attr in attributes.keys():
+        lines += [f'buf += bytes(self.{attr})']
+
+    lines += ['return buf']
+
+    return _create_fn('__bytes__', ['self'], lines, globals)
 
 def _process_class(cls=None):
     """
@@ -77,10 +86,13 @@ def _process_class(cls=None):
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['_binary_buffer'] = _binary_buffer
 
-    if hasattr(cls, '__annotations__'):
-        init_fn = _create_init_fn(cls.__annotations__, globals)
+    annotations = cls.__dict__.get('__annotations__', {})
 
-        setattr(cls, '__init__', init_fn)
+    init_fn = _create_init_fn(annotations, globals)
+    setattr(cls, '__init__', init_fn)
+
+    bytes_fn = _create_bytes_fn(annotations, globals)
+    setattr(cls, '__bytes__', bytes_fn)
 
     return cls
 

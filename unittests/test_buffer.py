@@ -1,4 +1,4 @@
-from ctypes import c_uint32
+from ctypes import c_uint32, c_uint8
 from buffer import Buffer, MaxSizeExceededError
 
 
@@ -179,3 +179,13 @@ def test_invalid_imul_size():
 
     except MaxSizeExceededError:
         pass
+
+def test_valid_serialization():
+    a = Buffer(c_uint8, 10, [0x41] * 10)
+
+    assert bytes(a) == b'A' * 10
+
+def test_valid_serialization_empty():
+    a = Buffer(int, 0)
+
+    assert bytes(a) == b''
