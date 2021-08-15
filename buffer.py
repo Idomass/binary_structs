@@ -16,57 +16,52 @@ class MaxSizeExceededError(Exception):
 class Buffer(list):
     """
     A list with type and maximum size.
+    Buffer will attempt to construct the object using the underlying type,
+    and the passed parameter.
     Useful for libraries that convert the list into a bytes representation
     """
 
-    def __init__(self, underlying_type: type, max_size: int, /, *args, **kwargs):
+    def __init__(self, underlying_type: type, max_size: int, /, buf: list = []):
         self._underlying_type = underlying_type
         self._max_size = max_size
 
-        super().__init__(*args, **kwargs)
+        self._extend_buf(buf)
 
-        if len(self) > self._max_size:
-            raise MaxSizeExceededError('Given list is bigger than given size!')
-
-        if not all(isinstance(i, self._underlying_type) for i in self):
-            raise TypeError(f'Type mismatch! wrong type passed to buffer with type {self._underlying_type}')
-
-    def _extend_buf(self, _iterable):
+    def _add_to_buf(self, index: int, object) -> None:
         """
-        A method used by extend and __iadd__ since they implement the same logic
+        A method used to add an element to the buffer
         """
 
-        if len(_iterable) + len(self) > self._max_size:
-            raise MaxSizeExceededError('Failed extending buffer, max size reached!')
-
-        if not all(isinstance(i, self._underlying_type) for i in _iterable):
-            raise TypeError(f'Trying to add wrong type to a buffer with type {self._underlying_type}')
-
-        return super().__iadd__(_iterable)
-
-    def append(self, _object) -> None:
-        if not isinstance(_object, self._underlying_type):
-            raise TypeError(f'Trying to append {type(_object)} to a buffer with type {self._underlying_type}')
-
-        if len(self) == self._max_size:
-            raise MaxSizeExceededError('Failed to append to buffer, max size reached!')
-
-        return super().append(_object)
-
-    def extend(self, _iterable) -> None:
-        self._extend_buf(_iterable)
-
-    def insert(self, _index: int, _object) -> None:
         if len(self) == self._max_size:
             raise MaxSizeExceededError('Failed to insert to buffer, max size reached!')
 
-        if not isinstance(_object, self._underlying_type):
-            raise TypeError(f'Trying to insert {type(_object)} to a buffer with type {self._underlying_type}')
+        try:
+            super().insert(index, self._underlying_type(object))
 
-        return super().insert(_index, _object)
+        except [ValueError, TypeError]:
+            raise TypeError(f'Failed buiding {self._underlying_type} with type {type(object)}')
 
-    def __iadd__(self, _iterable):
-        return self._extend_buf(_iterable)
+    def _extend_buf(self, iterable) -> None:
+        """
+        A method used to extend the buffer
+        """
+
+        for index, object in enumerate(iterable):
+            self._add_to_buf(len(self) + index, object)
+
+    def append(self, object) -> None:
+        self._add_to_buf(len(self), object)
+
+    def extend(self, iterable) -> None:
+        self._extend_buf(iterable)
+
+    def insert(self, index: int, object) -> None:
+        self._add_to_buf(index, object)
+
+    def __iadd__(self, iterable):
+        self._extend_buf(iterable)
+
+        return self
 
     def __imul__(self, n: int):
         if n * len(self) > self._max_size:
