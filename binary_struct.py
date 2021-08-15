@@ -12,7 +12,9 @@ class BufferWithSize:
 """
 import sys
 import logging
+
 from typing import List
+from buffer import Buffer as _binary_buffer
 
 
 def _create_fn(name, local_params: List[str] = [], lines: List[str] = ['pass'], globals: dict = {}):
@@ -39,16 +41,14 @@ def _init_var(name: str, kind: type or List[type, int]) -> List[str]:
     init_var = []
     if isinstance(kind, list):
         underlying_type, size = kind
-        kind = list
 
-        module_name =  '' if underlying_type.__module__ == 'builtins' else f'{underlying_type.__module__}.'
+        type_name =  underlying_type if underlying_type.__module__ == 'builtins' \
+                     else f'{underlying_type.__module__}.{underlying_type.__name__}'
 
         # TODO: try to replace it with a function that its text will be copied instead
         init_var.append(f'if {size} < len({name}):')
         init_var.append(f'   raise TypeError("List is bigger than given size!")')
-        init_var.append(f'self.{name} = list()')
-        init_var.append(f'for element in {name}:')
-        init_var.append(f'    self.{name}.append({module_name}{underlying_type.__name__}(element))')
+        init_var.append(f'self.{name} = _binary_buffer({type_name}, {size}, {name})')
 
     else:
         module_name =  '' if kind.__module__ == 'builtins' else f'{kind.__module__}.'
@@ -74,7 +74,9 @@ def _process_class(cls=None):
     returns a processed class
     """
 
-    globals = sys.modules[cls.__module__].__dict__
+    globals = sys.modules[cls.__module__].__dict__.copy()
+    globals['_binary_buffer'] = _binary_buffer
+
     if hasattr(cls, '__annotations__'):
         init_fn = _create_init_fn(cls.__annotations__, globals)
 

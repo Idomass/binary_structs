@@ -1,5 +1,7 @@
 import ctypes
+
 from binary_struct import binary_struct
+from buffer import MaxSizeExceededError
 
 
 def test_empty_class(EmptyClass):
@@ -75,11 +77,9 @@ def test_invalid_wrong_values(ModuleClass):
 def test_valid_buffer(BufferClass):
     a = BufferClass(32, [97] * 32)
 
-    assert a.size.value == 32
-    assert isinstance(a.size, ctypes.c_uint32)
-
     for element in a.buf:
         assert element.value == 97
+
     assert isinstance(a.buf[0], ctypes.c_uint8)
 
 def test_invalid_length_buffer(BufferClass):
@@ -88,4 +88,19 @@ def test_invalid_length_buffer(BufferClass):
         assert False
 
     except TypeError:
+        pass
+
+def test_valid_empty_buffer(BufferClass):
+    a = BufferClass(5, [])
+
+    assert a.buf == []
+
+def test_invalid_buffer_overflow(BufferClass):
+    try:
+        a = BufferClass(32, [67] * 32)
+
+        a.buf.append(6)
+        assert False
+
+    except MaxSizeExceededError:
         pass
