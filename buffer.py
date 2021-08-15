@@ -68,3 +68,6 @@ class Buffer(list):
             raise MaxSizeExceededError('Failed multiplying buffer, max size reached!')
 
         return super().__imul__(n)
+
+    def __bytes__(self) -> bytes:
+        return b''.join(bytes(element) for element in self)
