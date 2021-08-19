@@ -21,7 +21,7 @@ class Buffer(list):
     Useful for libraries that convert the list into a bytes representation
     """
 
-    def __init__(self, underlying_type: type, max_size: int, /, buf: list = []):
+    def __init__(self, underlying_type: type, max_size: int, buf: list = []):
         self._underlying_type = underlying_type
         self._max_size = max_size
 
@@ -41,12 +41,12 @@ class Buffer(list):
         except [ValueError, TypeError]:
             raise TypeError(f'Failed buiding {self._underlying_type} with type {type(object)}')
 
-    def _extend_buf(self, iterable) -> None:
+    def _extend_buf(self, objects_list: list) -> None:
         """
         A method used to extend the buffer
         """
 
-        for index, object in enumerate(iterable):
+        for index, object in enumerate(objects_list):
             self._add_to_buf(len(self) + index, object)
 
     def append(self, object) -> None:

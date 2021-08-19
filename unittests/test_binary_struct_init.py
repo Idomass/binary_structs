@@ -1,7 +1,7 @@
 import ctypes
 
 from binary_struct import binary_struct
-from buffer import MaxSizeExceededError
+from buffer import Buffer, MaxSizeExceededError
 
 
 def test_empty_class(EmptyClass):
@@ -30,20 +30,20 @@ def test_invalid_simple_class(SimpleClass):
 def test_valid_simple_class_assert_type(SimpleClass):
     a = SimpleClass(5)
 
-    assert a.a == 5
     assert isinstance(a.a, int)
+    assert a.a == 5
 
 def test_valid_complex_class(ComplexClass):
     a = ComplexClass(69, 'nice', b'\xde\xad\xbe\xef')
 
-    assert a.num == 69
     assert isinstance(a.num, int)
+    assert a.num == 69
 
-    assert a.line == 'nice'
     assert isinstance(a.line, str)
+    assert a.line == 'nice'
 
-    assert a.buf == b'\xde\xad\xbe\xef'
     assert isinstance(a.buf, bytes)
+    assert a.buf == b'\xde\xad\xbe\xef'
 
 def test_valid_type_alias():
     tmp = bytes
@@ -54,24 +54,25 @@ def test_valid_type_alias():
 
     a = A(b'\xff')
 
-    assert a.b == b'\xff'
     assert isinstance(a.b, bytes)
+    assert a.b == b'\xff'
 
 def test_valid_class_with_modules(ModuleClass):
-    a = ModuleClass(12345678, 244)
+    buf = Buffer(int, 10)
+    a = ModuleClass(buf, 244)
 
-    assert a.ptr.value == 12345678
-    assert isinstance(a.ptr, ctypes.c_void_p)
+    assert isinstance(a.buf, Buffer)
+    assert a.buf == buf
 
-    assert a.size.value == 244
-    assert isinstance(a.size, ctypes.c_uint32)
+    assert isinstance(a.magic, ctypes.c_uint32)
+    assert a.magic.value == 244
 
 def test_invalid_wrong_values(ModuleClass):
     try:
         ModuleClass('Noder', 15)
         assert False
 
-    except TypeError:
+    except AssertionError:
         pass
 
 def test_valid_buffer(BufferClass):
@@ -104,3 +105,16 @@ def test_invalid_buffer_overflow(BufferClass):
 
     except MaxSizeExceededError:
         pass
+
+def test_valid_nested_class(BufferClass, NestedClass):
+    a = BufferClass(5, range(5))
+    b = NestedClass(a, 0xdeadbeef)
+
+    assert isinstance(b.buffer, BufferClass)
+    assert b.buffer == a
+
+def test_valid_class_duplicate_members(DuplicateClass):
+    a = DuplicateClass(0xff)
+
+    assert isinstance(a.magic, ctypes.c_uint32)
+    assert a.magic.value == 0xff
