@@ -11,13 +11,14 @@ class BufferWithSize:
     buf: [ctypes.c_uint8, 64]
 """
 import sys
+import string
+import random
 import logging
 
-from typing import List
 from buffer import Buffer as _binary_buffer
 
 
-def _create_fn(name, local_params: List[str] = [], lines: List[str] = ['pass'], globals: dict = {}):
+def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):
     """
     This function receives a name for the function, and returns a
     function with the given locals and globals
@@ -32,27 +33,48 @@ def _create_fn(name, local_params: List[str] = [], lines: List[str] = ['pass'], 
 
     return ns[name]
 
-def _init_var(name: str, kind: type or List[type, int]) -> List[str]:
+def _insert_type_to_globals(kind: type, globals: dict = {}) -> str:
+    """
+    Inserts the given type into the namespace
+    Returns the temporary name
+    """
+
+    rand_str = ''.join(random.choice(string.ascii_letters) for _ in range(16))
+    name = f'__{rand_str}BINARY_STRUCT_TMP{kind.__name__}'
+
+    if globals.get(name, False):
+        raise AttributeError('Temporary variable name already exist!')
+
+    globals[name] = kind
+
+    return name
+
+def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> list[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
     Returns the python code that is required to init that variable.
     """
 
+    logging.debug(f'Creating init var {name} with type {kind}')
+
     init_var = []
     if isinstance(kind, list):
         underlying_type, size = kind
-
-        type_name =  underlying_type if underlying_type.__module__ == 'builtins' \
-                     else f'{underlying_type.__module__}.{underlying_type.__name__}'
+        type_name = _insert_type_to_globals(underlying_type, globals)
 
         # TODO: try to replace it with a function that its text will be copied instead
-        init_var.append(f'if {size} < len({name}):')
-        init_var.append(f'   raise TypeError("List is bigger than given size!")')
-        init_var.append(f'self.{name} = _binary_buffer({type_name}, {size}, {name})')
+        init_var =  [f'if {size} < len({name}):']
+        init_var += [f'   raise TypeError("list is bigger than given size!")']
+        init_var += [f'self.{name} = _binary_buffer({type_name}, {size}, {name})']
 
     else:
-        module_name =  '' if kind.__module__ == 'builtins' else f'{kind.__module__}.'
-        init_var = [f'self.{name} = {module_name}{kind.__name__}({name})']
+        type_name = _insert_type_to_globals(kind, globals)
+
+        init_var =  [f'try:']
+        init_var += [f'    self.{name} = {type_name}({name})']
+        init_var += [f'except (TypeError, ValueError):']
+        init_var += [f'    assert isinstance({name}, {type_name})']
+        init_var += [f'    self.{name} = {name}']
 
     return init_var
 
@@ -64,11 +86,16 @@ def _create_init_fn(attributes: dict = {}, globals: dict = {}) -> str:
 
     init_txt = []
     for name, kind in attributes.items():
-        init_txt.extend(_init_var(name, kind))
+        init_txt.extend(_init_var(name, kind, globals))
 
     return _create_fn('__init__', ['self'] + list(attributes.keys()), init_txt or ['pass'], globals)
 
 def _create_bytes_fn(attributes: dict = {}, globals: dict = {}) -> str:
+    """
+    Create bytes function and return it.
+    The created function will call bytes() on every class member
+    """
+
     lines = ['buf = b""']
     for attr in attributes.keys():
         lines += [f'buf += bytes(self.{attr})']
@@ -82,6 +109,8 @@ def _process_class(cls=None):
     This function is the main logic unit, it parses the different parameters and
     returns a processed class
     """
+
+    logging.debug(f'Processing class {cls.__name__}')
 
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['_binary_buffer'] = _binary_buffer

@@ -1,7 +1,7 @@
 import pytest
 import ctypes
 
-from ctypes import c_void_p
+from buffer import Buffer
 from binary_struct import binary_struct
 
 @pytest.fixture
@@ -34,8 +34,8 @@ def ComplexClass():
 def ModuleClass():
     @binary_struct
     class A:
-        ptr: c_void_p
-        size: ctypes.c_uint32
+        buf: Buffer
+        magic: ctypes.c_uint32
 
     return A
 
@@ -45,5 +45,23 @@ def BufferClass():
     class A:
         size: ctypes.c_uint32
         buf: [ctypes.c_uint8, 32]
+
+    return A
+
+@pytest.fixture
+def NestedClass(BufferClass):
+    @binary_struct
+    class A:
+        buffer: BufferClass
+        magic: ctypes.c_uint32
+
+    return A
+
+@pytest.fixture
+def DuplicateClass():
+    @binary_struct
+    class A:
+        magic: ctypes.c_uint32
+        magic: ctypes.c_uint32
 
     return A
