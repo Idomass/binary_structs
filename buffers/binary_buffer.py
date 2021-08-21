@@ -13,7 +13,7 @@ class MaxSizeExceededError(Exception):
     """
 
 
-class Buffer(list):
+class BinaryBuffer(list):
     """
     A list with type and maximum size.
     Buffer will attempt to construct the object using the underlying type,

@@ -15,7 +15,7 @@ import string
 import random
 import logging
 
-from buffer import Buffer as _binary_buffer
+from buffers.binary_buffer import BinaryBuffer as _binary_buffer
 
 
 def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):

@@ -1,7 +1,7 @@
 import ctypes
 
 from binary_struct import binary_struct
-from buffer import Buffer, MaxSizeExceededError
+from buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
 
 
 def test_empty_class(EmptyClass):
@@ -58,10 +58,10 @@ def test_valid_type_alias():
     assert a.b == b'\xff'
 
 def test_valid_class_with_modules(ModuleClass):
-    buf = Buffer(int, 10)
+    buf = BinaryBuffer(int, 10)
     a = ModuleClass(buf, 244)
 
-    assert isinstance(a.buf, Buffer)
+    assert isinstance(a.buf, BinaryBuffer)
     assert a.buf == buf
 
     assert isinstance(a.magic, ctypes.c_uint32)
