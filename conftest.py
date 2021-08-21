@@ -1,7 +1,7 @@
 import pytest
 import ctypes
 
-from buffer import Buffer
+from buffers.binary_buffer import BinaryBuffer
 from binary_struct import binary_struct
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def ComplexClass():
 def ModuleClass():
     @binary_struct
     class A:
-        buf: Buffer
+        buf: BinaryBuffer
         magic: ctypes.c_uint32
 
     return A
