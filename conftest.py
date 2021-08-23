@@ -1,9 +1,17 @@
 import pytest
 import ctypes
 
-from buffers.binary_buffer import BinaryBuffer
 from binary_struct import binary_struct
+from buffers.typed_buffer import TypedBuffer
+from buffers.binary_buffer import BinaryBuffer
 
+
+# buffers
+@pytest.fixture
+def typed_buffer():
+    return TypedBuffer(ctypes.c_uint8, [97] * 20)
+
+# binary_structs
 @pytest.fixture
 def EmptyClass():
     @binary_struct
