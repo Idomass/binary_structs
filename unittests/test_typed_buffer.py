@@ -1,4 +1,3 @@
-from ctypes import c_ubyte
 import ctypes
 from buffers.typed_buffer import TypedBuffer
 
@@ -18,7 +17,7 @@ def test_invalid_init():
         pass
 
 def test_valid_init_different_ctor():
-    a = TypedBuffer(c_ubyte, [97] * 50)
+    a = TypedBuffer(ctypes.c_ubyte, [97] * 50)
 
     for element in a:
         assert element.value == 97
@@ -92,8 +91,54 @@ def test_valid_copy(typed_buffer):
     typed_buffer[5] = 3
     assert original_buffer != typed_buffer
 
-# def test_valid_extend(typed_buffer):
-#     original_
-#     typed_buffer.extend([ctypes.c_uint8(50)] * 5)
+def test_valid_extend(typed_buffer):
+    typed_buffer.extend([ctypes.c_uint8(50)] * 5)
 
-#     assert
+    for i in range(20):
+        assert typed_buffer[i].value == 97
+
+    for j in range(5):
+        assert typed_buffer[i + 1 + j].value == 50
+
+def test_invalid_extend(typed_buffer):
+    try:
+        typed_buffer.extend(['Noder', 'neder'])
+        assert False
+
+    except TypeError:
+        pass
+
+def test_valid_extend_different_ctor(typed_buffer):
+    typed_buffer.extend([50] * 5)
+
+    for i in range(20):
+        assert typed_buffer[i].value == 97
+
+    for j in range(5):
+        assert typed_buffer[i + 1 + j].value == 50
+
+def test_valid_iadd(typed_buffer):
+    typed_buffer += [ctypes.c_uint8(50)] * 5
+
+    for i in range(20):
+        assert typed_buffer[i].value == 97
+
+    for j in range(5):
+        assert typed_buffer[i + 1 + j].value == 50
+
+def test_invalid_iadd(typed_buffer):
+    try:
+        typed_buffer += ['Hello', 'world']
+        assert False
+
+    except TypeError:
+        pass
+
+def test_valid_iadd_different_ctor(typed_buffer):
+    typed_buffer += [50] * 5
+
+    for i in range(20):
+        assert typed_buffer[i].value == 97
+
+    for j in range(5):
+        assert typed_buffer[i + 1 + j].value == 50
