@@ -33,12 +33,18 @@ class TypedBuffer(list):
         except [ValueError, TypeError]:
             raise TypeError(f'Trying to add an element of {type(element)} to buffer of {self._underlying_type}\'s')
 
-    def __setitem__(self, index_or_slice, element):
+    def __setitem__(self, index_or_slice, element) -> None:
         if isinstance(index_or_slice, slice):
-            super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])
+            return super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])
 
         else:
-            super().__setitem__(index_or_slice, self._build_new_element(element))
+            return super().__setitem__(index_or_slice, self._build_new_element(element))
 
     def append(self, element) -> None:
-        super().insert(len(self), self._build_new_element(element))
+        return super().append(self._build_new_element(element))
+
+    def extend(self, iterable) -> None:
+        return super().extend([self._build_new_element(element) for element in iterable])
+
+    def __iadd__(self, iterable):
+        return super().__iadd__([self._build_new_element(element) for element in iterable])
