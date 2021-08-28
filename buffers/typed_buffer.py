@@ -2,7 +2,6 @@
 This file has the implementation for TypedBuffer.
 It is used by BinaryBuffer and binary_structs
 """
-from typing import Iterable, SupportsIndex
 
 
 class TypedBuffer(list):
@@ -46,5 +45,11 @@ class TypedBuffer(list):
     def extend(self, iterable) -> None:
         return super().extend([self._build_new_element(element) for element in iterable])
 
+    def insert(self, index, element) -> None:
+        return super().insert(index, self._build_new_element(element))
+
     def __iadd__(self, iterable):
         return super().__iadd__([self._build_new_element(element) for element in iterable])
+
+    def __bytes__(self) -> bytes:
+        return b''.join(bytes(element) for element in self)
