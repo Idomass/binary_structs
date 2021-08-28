@@ -16,6 +16,7 @@ import random
 import logging
 
 from buffers.binary_buffer import BinaryBuffer as _binary_buffer
+from buffers.typed_buffer import TypedBuffer as _typed_buffer
 
 
 def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):
@@ -58,16 +59,29 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
     logging.debug(f'Creating init var {name} with type {kind}')
 
     init_var = []
-    if isinstance(kind, list):
-        underlying_type, size = kind
-        type_name = _insert_type_to_globals(underlying_type, globals)
 
-        # TODO: try to replace it with a function that its text will be copied instead
-        init_var =  [f'if {size} < len({name}):']
-        init_var += [f'   raise TypeError("list is bigger than given size!")']
-        init_var += [f'self.{name} = _binary_buffer({type_name}, {size}, {name})']
+    # TODO match syntax asap
+    if isinstance(kind, list):
+        if len(kind) == 2:
+            # BinaryBuffer
+            underlying_type, size = kind
+            type_name = _insert_type_to_globals(underlying_type, globals)
+
+            init_var =  [f'if {size} < len({name}):']
+            init_var += [f'   raise TypeError("list is bigger than given size!")']
+            init_var += [f'self.{name} = _binary_buffer({type_name}, {size}, {name})']
+
+        elif len(kind) == 1:
+            # TypedBuffer
+            type_name = _insert_type_to_globals(kind[0], globals)
+
+            init_var = [f'self.{name} = _typed_buffer({type_name}, {name})']
+
+        else:
+            raise ValueError('Buffer has wrong number of parameters!')
 
     else:
+
         type_name = _insert_type_to_globals(kind, globals)
 
         init_var =  [f'try:']
@@ -114,6 +128,7 @@ def _process_class(cls=None):
 
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['_binary_buffer'] = _binary_buffer
+    globals['_typed_buffer'] = _typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
 

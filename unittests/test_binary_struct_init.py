@@ -1,5 +1,7 @@
+import pytest
 import ctypes
 
+from copy import deepcopy
 from binary_struct import binary_struct
 from buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
 
@@ -119,3 +121,20 @@ def test_valid_class_duplicate_members(DuplicateClass):
 
     assert isinstance(a.magic, ctypes.c_uint32)
     assert a.magic.value == 0xff
+
+@pytest.mark.skip(reason='Cant figure a way to pass it for now')
+def test_valid_class_copy_ctor(BufferClass):
+    a = BufferClass(5, range(5))
+    b = deepcopy(a)
+
+    b.size.value = 10
+
+    assert a.size.value == 5
+    assert b.size.value == 10
+
+def test_valid_class_dynamic_buffer(DynamicClass):
+    a = DynamicClass(5, [97] * 50)
+
+    assert a.magic.value == 5
+    for element in a.buf:
+        assert element.value == 97
