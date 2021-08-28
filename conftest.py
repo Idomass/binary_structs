@@ -73,3 +73,12 @@ def DuplicateClass():
         magic: ctypes.c_uint32
 
     return A
+
+@pytest.fixture
+def DynamicClass():
+    @binary_struct
+    class A:
+        magic: ctypes.c_uint8
+        buf: [ctypes.c_byte]
+
+    return A
