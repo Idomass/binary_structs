@@ -6,6 +6,9 @@ It is used by the binary_struct class instead of lists.
 """
 
 
+from buffers.typed_buffer import TypedBuffer
+
+
 class MaxSizeExceededError(Exception):
     """
     Indicates that a SizedList had it max size exceed the given
@@ -13,7 +16,7 @@ class MaxSizeExceededError(Exception):
     """
 
 
-class BinaryBuffer(list):
+class BinaryBuffer(TypedBuffer):
     """
     A list with type and maximum size.
     Buffer will attempt to construct the object using the underlying type,
@@ -21,53 +24,36 @@ class BinaryBuffer(list):
     Useful for libraries that convert the list into a bytes representation
     """
 
-    def __init__(self, underlying_type: type, max_size: int, buf: list = []):
-        self._underlying_type = underlying_type
-        self._max_size = max_size
-
-        self._extend_buf(buf)
-
-    def _add_to_buf(self, index: int, object) -> None:
+    def __init__(self, underlying_type: type, size: int, buf: list = []):
         """
-        A method used to add an element to the buffer
+        A buffer with the given size will be created with empty instances in order
+        to complete the buffer
         """
 
-        if len(self) == self._max_size:
-            raise MaxSizeExceededError('Failed to insert to buffer, max size reached!')
+        self._size = size
+        if len(buf) > self._size:
+            raise MaxSizeExceededError('Given buffer is too big!')
 
-        try:
-            super().insert(index, self._underlying_type(object))
+        super().__init__(underlying_type, buf)
 
-        except [ValueError, TypeError]:
-            raise TypeError(f'Failed buiding {self._underlying_type} with type {type(object)}')
+        # Fill with empty instances
+        for index in range(len(self), self._size):
+            super().insert(index, self._underlying_type())
 
-    def _extend_buf(self, objects_list: list) -> None:
-        """
-        A method used to extend the buffer
-        """
+    def _build_new_element(self, element):
+        return super()._build_new_element(element)
 
-        for index, object in enumerate(objects_list):
-            self._add_to_buf(len(self) + index, object)
+    def insert(self, index, element) -> None:
+        raise MaxSizeExceededError('Can\'t insert to an already full buffer')
 
-    def append(self, object) -> None:
-        self._add_to_buf(len(self), object)
+    def append(self, element) -> None:
+        raise MaxSizeExceededError('Can\'t append to an already full buffer')
 
     def extend(self, iterable) -> None:
-        self._extend_buf(iterable)
-
-    def insert(self, index: int, object) -> None:
-        self._add_to_buf(index, object)
+        raise MaxSizeExceededError('Can\'t extend an already full buffer')
 
     def __iadd__(self, iterable):
-        self._extend_buf(iterable)
-
-        return self
+        raise MaxSizeExceededError('Can\'t add to an already full buffer')
 
     def __imul__(self, n: int):
-        if n * len(self) > self._max_size:
-            raise MaxSizeExceededError('Failed multiplying buffer, max size reached!')
-
-        return super().__imul__(n)
-
-    def __bytes__(self) -> bytes:
-        return b''.join(bytes(element) for element in self)
+        raise MaxSizeExceededError('Can\'t multiply to an already full buffer')

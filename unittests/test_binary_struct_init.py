@@ -94,7 +94,8 @@ def test_invalid_length_buffer(BufferClass):
 def test_valid_empty_buffer(BufferClass):
     a = BufferClass(5, [])
 
-    assert a.buf == []
+    for element in a.buf:
+        assert element.value == 0
 
 def test_invalid_buffer_overflow(BufferClass):
     try:
