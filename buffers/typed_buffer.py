@@ -2,6 +2,7 @@
 This file has the implementation for TypedBuffer.
 It is used by BinaryBuffer and binary_structs
 """
+from utils.binary_field import BinaryField
 
 
 class TypedBuffer(list):
@@ -9,7 +10,10 @@ class TypedBuffer(list):
     TypedBuffer, is a list the enforces type of its elements
     """
 
-    def __init__(self, underlying_type: type, buf: list = []):
+    def __init__(self, underlying_type: BinaryField, buf: list = []):
+        if not issubclass(underlying_type, BinaryField):
+            raise TypeError('Field must implement BinaryField interface!')
+
         self._underlying_type = underlying_type
 
         for index, element in enumerate(buf):

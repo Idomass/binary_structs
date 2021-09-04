@@ -1,28 +1,28 @@
 import pytest
-import ctypes
 
+from utils.binary_field import uint8_t
 from buffers.typed_buffer import TypedBuffer
 
 
 def test_valid_init():
-    a = TypedBuffer(int, [1, 2, 3])
+    a = TypedBuffer(uint8_t, [1, 2, 3])
 
-    assert isinstance(a[0], int)
+    assert isinstance(a[0], uint8_t)
     assert a == [1, 2, 3]
 
 
 def test_invalid_init():
     with pytest.raises(TypeError):
-        TypedBuffer(int, ['BadValue'])
+        TypedBuffer(uint8_t, ['BadValue'])
 
 def test_valid_init_different_ctor():
-    a = TypedBuffer(ctypes.c_ubyte, [97] * 50)
+    a = TypedBuffer(uint8_t, [97] * 50)
 
     for element in a:
         assert element.value == 97
 
 def test_valid_append(typed_buffer):
-    typed_buffer.append(ctypes.c_uint8(50))
+    typed_buffer.append(uint8_t(50))
 
     assert typed_buffer[-1].value == 50
 
@@ -36,7 +36,7 @@ def test_valid_append_differnent_ctor(typed_buffer):
     assert typed_buffer[-1].value == 5
 
 def test_item_assignment_valid(typed_buffer):
-    typed_buffer[0] = ctypes.c_uint8(1)
+    typed_buffer[0] = uint8_t(1)
 
     assert typed_buffer[0].value == 1
 
@@ -50,7 +50,7 @@ def test_item_assignment_valid_different_ctor(typed_buffer):
     assert typed_buffer[0].value == 5
 
 def test_list_slicing_valid(typed_buffer):
-    typed_buffer[:10] = [ctypes.c_uint8(0)] * 10
+    typed_buffer[:10] = [uint8_t(0)] * 10
 
     for i in range(10):
         assert typed_buffer[i].value == 0
@@ -80,7 +80,7 @@ def test_valid_copy(typed_buffer):
     assert original_buffer != typed_buffer
 
 def test_valid_extend(typed_buffer):
-    typed_buffer.extend([ctypes.c_uint8(50)] * 5)
+    typed_buffer.extend([uint8_t(50)] * 5)
 
     for i in range(20):
         assert typed_buffer[i].value == 97
@@ -102,7 +102,7 @@ def test_valid_extend_different_ctor(typed_buffer):
         assert typed_buffer[i + 1 + j].value == 50
 
 def test_valid_iadd(typed_buffer):
-    typed_buffer += [ctypes.c_uint8(50)] * 5
+    typed_buffer += [uint8_t(50)] * 5
 
     for i in range(20):
         assert typed_buffer[i].value == 97
@@ -124,7 +124,7 @@ def test_valid_iadd_different_ctor(typed_buffer):
         assert typed_buffer[i + 1 + j].value == 50
 
 def test_valid_insert(typed_buffer):
-    typed_buffer.insert(10, ctypes.c_uint8(0))
+    typed_buffer.insert(10, uint8_t(0))
 
     for i in range(10):
         assert typed_buffer[i].value == 97
@@ -150,7 +150,7 @@ def test_valid_insert_different_ctor(typed_buffer):
         assert typed_buffer[i + 1 + 2].value == 97
 
 def test_valid_serialization_empty():
-    assert bytes(TypedBuffer(int)) == b''
+    assert bytes(TypedBuffer(uint8_t)) == b''
 
 def test_valid_serialization(typed_buffer):
     assert bytes(typed_buffer) == b'a' * 20
