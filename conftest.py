@@ -2,6 +2,7 @@ import pytest
 import ctypes
 
 from binary_struct import binary_struct
+from utils.binary_field import uint8_t
 from buffers.typed_buffer import TypedBuffer
 from buffers.binary_buffer import BinaryBuffer
 
@@ -9,7 +10,7 @@ from buffers.binary_buffer import BinaryBuffer
 # buffers
 @pytest.fixture
 def typed_buffer():
-    return TypedBuffer(ctypes.c_uint8, [97] * 20)
+    return TypedBuffer(uint8_t, [97] * 20)
 
 # binary_structs
 @pytest.fixture
