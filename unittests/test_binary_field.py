@@ -44,7 +44,7 @@ def test_valid_init(underlying_type, default_value, size, buf):
 def test_valid_size(underlying_type, default_value, size, buf):
     a = underlying_type(default_value)
 
-    assert a.size == size
+    assert a.size_in_bytes == size
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_valid_deserialization(underlying_type, default_value, size, buf):
@@ -71,4 +71,4 @@ def test_valid_serialization(underlying_type, default_value, size, buf):
 def test_valid_serialization_empty(underlying_type, default_value, size, buf):
     a = underlying_type()
 
-    assert bytes(a) == b'\x00' * a.size
+    assert bytes(a) == b'\x00' * a.size_in_bytes
