@@ -10,7 +10,6 @@ def test_valid_init():
     assert isinstance(a[0], uint8_t)
     assert a == [1, 2, 3]
 
-
 def test_invalid_init():
     with pytest.raises(TypeError):
         TypedBuffer(uint8_t, ['BadValue'])
@@ -154,3 +153,11 @@ def test_valid_serialization_empty():
 
 def test_valid_serialization(typed_buffer):
     assert bytes(typed_buffer) == b'a' * 20
+
+def test_valid_size(typed_buffer):
+    assert typed_buffer.size_in_bytes == 20
+
+def test_valid_size_empty():
+    a = TypedBuffer(uint8_t)
+
+    assert a.size_in_bytes == 0

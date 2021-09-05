@@ -33,7 +33,6 @@ test_buffer = [
     (be_uint64_t, 28427847382434, 8, b'\x00\x00\x19\xda\xdf\xbe\xb5\xa2'),
 ]
 
-
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_valid_init(underlying_type, default_value, size, buf):
     a = underlying_type(default_value)
@@ -65,7 +64,6 @@ def test_valid_serialization(underlying_type, default_value, size, buf):
     a = underlying_type(default_value)
 
     assert bytes(a) == buf
-
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_valid_serialization_empty(underlying_type, default_value, size, buf):

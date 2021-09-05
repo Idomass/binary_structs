@@ -82,6 +82,7 @@ def test_valid_class_duplicate_members(DuplicateClass):
     assert isinstance(a.magic, uint32_t)
     assert a.magic.value == 0xff
 
+# TODO
 @pytest.mark.skip(reason='Cant figure a way to pass it for now')
 def test_valid_class_copy_ctor(BufferClass):
     a = BufferClass(5, range(5))
@@ -98,3 +99,60 @@ def test_valid_class_dynamic_buffer(DynamicClass):
     assert a.magic.value == 5
     for element in a.buf:
         assert element.value == 97
+
+def test_valid_2_classes_are_different(DynamicClass, BufferClass):
+    assert DynamicClass is not BufferClass
+
+def test_valid_class_custom_init_implementation():
+    @binary_struct
+    class A:
+        times_two: uint8_t
+
+        def __init__(self, times_two):
+            # TODO Unfortunately I can't find a better solution
+            super(type(self), self).__init__(times_two * 2)
+
+    a = A(5)
+
+    assert a.times_two.value == 10
+
+def test_valid_class_custom_init_implementation_multiple_inheritence():
+    class B:
+        def foo(self):
+            return True
+
+    class C:
+        def bar(self):
+            return True
+
+    @binary_struct
+    class A(B, C):
+        pass
+
+    a = A()
+    assert a.foo()
+    assert a.bar()
+
+def test_valid_class_size(BufferClass, NestedClass):
+    a = BufferClass(32, [97] * 32)
+    b = NestedClass(a, 0xdeadbeef)
+
+    assert a.size_in_bytes == 36
+    assert b.size_in_bytes == 40
+
+def test_valid_class_size_empty(EmptyClass):
+    a = EmptyClass()
+
+    assert a.size_in_bytes == 0
+
+def test_valid_class_with_size_in_bytes_attribute():
+    with pytest.raises(AttributeError):
+        @binary_struct
+        class A:
+            size_in_bytes: uint32_t
+
+def test_valid_class_with_FORMAT_attribute():
+    with pytest.raises(AttributeError):
+        @binary_struct
+        class A:
+            FORMAT: uint32_t

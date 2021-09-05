@@ -20,14 +20,16 @@ from buffers.binary_buffer import BinaryBuffer as _binary_buffer
 from buffers.typed_buffer import TypedBuffer as _typed_buffer
 
 
-def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):
+def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {},
+               is_property: bool = False):
     """
     This function receives a name for the function, and returns a
     function with the given locals and globals
     """
 
     lines_as_str = '\n    ' + '\n    '.join(lines)
-    fn_text = f'def {name}({", ".join(local_params)}):{lines_as_str}'
+    fn_text = '@property\n' if is_property else ''
+    fn_text += f'def {name}({", ".join(local_params)}):{lines_as_str}'
     logging.debug(f'Created new function:\n{fn_text}')
 
     ns = {}
@@ -56,6 +58,10 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
     Helper function for _create_init_fn that helps to init a variable.
     Returns the python code that is required to init that variable.
     """
+
+    # Don't allow these type names
+    if name in ('size_in_bytes', 'FORMAT'):
+        raise AttributeError(f'Can\'t set attribute name to {name}')
 
     logging.debug(f'Creating init var {name} with type {kind}')
 
@@ -92,7 +98,7 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
         init_var += [f'    self.{name} = {name}']
 
     # Make sure kind implements BinaryField
-    if not BinaryField.is_binary_field(kind):
+    if not issubclass(kind, BinaryField):
         raise TypeError('All fields must implement BinaryField!')
 
     return init_var
@@ -123,11 +129,24 @@ def _create_bytes_fn(attributes: dict = {}, globals: dict = {}) -> str:
 
     return _create_fn('__bytes__', ['self'], lines, globals)
 
+def _create_size_fn(attributes: dict = {}, globals: dict = {}) -> str:
+    lines = ['counter = 0']
+    for attr in attributes.keys():
+        lines += [f'counter += self.{attr}.size_in_bytes']
+
+    lines += ['return counter']
+
+    return _create_fn('size_in_bytes', ['self'], lines, globals, is_property=True)
+
 def _process_class(cls=None):
     """
     This function is the main logic unit, it parses the different parameters and
     returns a processed class
     """
+
+    # This will be used for creating the new class
+    class NewBinaryStruct(BinaryField):
+        pass
 
     logging.debug(f'Processing class {cls.__name__}')
 
@@ -138,22 +157,18 @@ def _process_class(cls=None):
     annotations = cls.__dict__.get('__annotations__', {})
 
     init_fn = _create_init_fn(annotations, globals)
-    setattr(cls, '__init__', init_fn)
+    setattr(NewBinaryStruct, '__init__', init_fn)
 
     bytes_fn = _create_bytes_fn(annotations, globals)
-    setattr(cls, '__bytes__', bytes_fn)
+    setattr(NewBinaryStruct, '__bytes__', bytes_fn)
 
-    # TODO placeholders, implement it
-    deserialize_fn = _create_fn('deserialize', ['self'], ['pass'], globals)
-    setattr(cls, 'deserialize', deserialize_fn)
+    size_property = _create_size_fn(annotations, globals)
+    setattr(NewBinaryStruct, 'size_in_bytes', size_property)
 
-    @property
-    def empty(self):
-        return 5
+    bases = cls.__bases__ if cls.__bases__ != (object,) else tuple()
+    new_cls = type(cls.__name__, bases + (NewBinaryStruct,), dict(cls.__dict__))
 
-    setattr(cls, 'size_in_bytes', empty)
-
-    return cls
+    return new_cls
 
 def binary_struct(cls=None):
     """

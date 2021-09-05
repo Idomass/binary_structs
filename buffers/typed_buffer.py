@@ -57,3 +57,7 @@ class TypedBuffer(list):
 
     def __bytes__(self) -> bytes:
         return b''.join(bytes(element) for element in self)
+
+    @property
+    def size_in_bytes(self):
+        return sum(element.size_in_bytes for element in self)

@@ -1,6 +1,6 @@
 import pytest
 
-from utils.binary_field import uint32_t, uint8_t
+from utils.binary_field import BinaryField, uint32_t, uint8_t
 from buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
 
 
@@ -70,3 +70,13 @@ def test_valid_serialization_empty():
     a = BinaryBuffer(uint32_t, 0)
 
     assert bytes(a) == b''
+
+def test_valid_size():
+    a = BinaryBuffer(uint8_t, 10)
+
+    assert a.size_in_bytes == 10
+
+def test_valid_size_empty():
+    a = BinaryBuffer(uint8_t, 0)
+
+    assert a.size_in_bytes == 0
