@@ -16,21 +16,27 @@ from abc import abstractmethod
 from typing import List
 
 
-class BinaryField:
-    @classmethod
+class BinaryField():
     @abstractmethod
     def deserialize(self, buffer):
         pass
 
-    @classmethod
     @abstractmethod
     def __bytes__(self):
         pass
 
     @property
     @abstractmethod
-    def size(self):
+    def size_in_bytes(self):
         pass
+
+    #TODO Must be a better way to implement this
+    @staticmethod
+    def is_binary_field(kind: type):
+        return (hasattr(kind, 'deserialize') and callable(kind.deserialize) and
+                hasattr(kind, '__bytes__') and callable(kind.__bytes__) and
+                hasattr(kind, 'size_in_bytes') and isinstance(kind.size_in_bytes, property))
+
 
 class PrimitiveTypeField(BinaryField):
     """
@@ -38,13 +44,13 @@ class PrimitiveTypeField(BinaryField):
     """
 
     def deserialize(self, buffer):
-        if len(buffer) < self.size:
+        if len(buffer) < self.size_in_bytes:
             raise ValueError('Given buffer is too small!')
 
         self.__init__(struct.unpack(self.FORMAT, buffer)[0])
 
     @property
-    def size(self):
+    def size_in_bytes(self):
         return ctypes.sizeof(self)
 
     def __eq__(self, number) -> bool:

@@ -15,6 +15,7 @@ import string
 import random
 import logging
 
+from utils.binary_field import BinaryField
 from buffers.binary_buffer import BinaryBuffer as _binary_buffer
 from buffers.typed_buffer import TypedBuffer as _typed_buffer
 
@@ -58,14 +59,12 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
 
     logging.debug(f'Creating init var {name} with type {kind}')
 
-    init_var = []
-
     # TODO match syntax asap
     if isinstance(kind, list):
         if len(kind) == 2:
             # BinaryBuffer
-            underlying_type, size = kind
-            type_name = _insert_type_to_globals(underlying_type, globals)
+            kind, size = kind
+            type_name = _insert_type_to_globals(kind, globals)
 
             init_var =  [f'if {size} < len({name}):']
             init_var += [f'   raise TypeError("list is bigger than given size!")']
@@ -73,7 +72,8 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
 
         elif len(kind) == 1:
             # TypedBuffer
-            type_name = _insert_type_to_globals(kind[0], globals)
+            kind = kind[0]
+            type_name = _insert_type_to_globals(kind, globals)
 
             init_var = [f'self.{name} = _typed_buffer({type_name}, {name})']
 
@@ -87,8 +87,13 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
         init_var =  [f'try:']
         init_var += [f'    self.{name} = {type_name}({name})']
         init_var += [f'except (TypeError, ValueError):']
-        init_var += [f'    assert isinstance({name}, {type_name})']
+        init_var += [f'    if not isinstance({name}, {type_name}):']
+        init_var += [f'        raise TypeError("Got invalid type for {name}")']
         init_var += [f'    self.{name} = {name}']
+
+    # Make sure kind implements BinaryField
+    if not BinaryField.is_binary_field(kind):
+        raise TypeError('All fields must implement BinaryField!')
 
     return init_var
 
@@ -137,6 +142,16 @@ def _process_class(cls=None):
 
     bytes_fn = _create_bytes_fn(annotations, globals)
     setattr(cls, '__bytes__', bytes_fn)
+
+    # TODO placeholders, implement it
+    deserialize_fn = _create_fn('deserialize', ['self'], ['pass'], globals)
+    setattr(cls, 'deserialize', deserialize_fn)
+
+    @property
+    def empty(self):
+        return 5
+
+    setattr(cls, 'size_in_bytes', empty)
 
     return cls
 

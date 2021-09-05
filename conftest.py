@@ -1,10 +1,9 @@
 import pytest
-import ctypes
 
 from binary_struct import binary_struct
-from utils.binary_field import uint8_t
 from buffers.typed_buffer import TypedBuffer
 from buffers.binary_buffer import BinaryBuffer
+from utils.binary_field import uint8_t, uint32_t
 
 
 # buffers
@@ -25,26 +24,7 @@ def EmptyClass():
 def SimpleClass():
     @binary_struct
     class A:
-        a: int
-
-    return A
-
-@pytest.fixture
-def ComplexClass():
-    @binary_struct
-    class A:
-        num: int
-        line: str
-        buf: bytes
-
-    return A
-
-@pytest.fixture
-def ModuleClass():
-    @binary_struct
-    class A:
-        buf: BinaryBuffer
-        magic: ctypes.c_uint32
+        a: uint8_t
 
     return A
 
@@ -52,8 +32,8 @@ def ModuleClass():
 def BufferClass():
     @binary_struct
     class A:
-        size: ctypes.c_uint32
-        buf: [ctypes.c_uint8, 32]
+        size: uint32_t
+        buf: [uint8_t, 32]
 
     return A
 
@@ -62,7 +42,7 @@ def NestedClass(BufferClass):
     @binary_struct
     class A:
         buffer: BufferClass
-        magic: ctypes.c_uint32
+        magic: uint32_t
 
     return A
 
@@ -70,8 +50,8 @@ def NestedClass(BufferClass):
 def DuplicateClass():
     @binary_struct
     class A:
-        magic: ctypes.c_uint32
-        magic: ctypes.c_uint32
+        magic: uint32_t
+        magic: uint32_t
 
     return A
 
@@ -79,7 +59,7 @@ def DuplicateClass():
 def DynamicClass():
     @binary_struct
     class A:
-        magic: ctypes.c_uint8
-        buf: [ctypes.c_byte]
+        magic: uint8_t
+        buf: [uint8_t]
 
     return A
