@@ -13,10 +13,9 @@ import struct
 import ctypes
 
 from abc import abstractmethod
-from typing import List
 
 
-class BinaryField():
+class BinaryField:
     @abstractmethod
     def deserialize(self, buffer):
         pass
@@ -29,14 +28,6 @@ class BinaryField():
     @abstractmethod
     def size_in_bytes(self):
         pass
-
-    #TODO Must be a better way to implement this
-    @staticmethod
-    def is_binary_field(kind: type):
-        return (hasattr(kind, 'deserialize') and callable(kind.deserialize) and
-                hasattr(kind, '__bytes__') and callable(kind.__bytes__) and
-                hasattr(kind, 'size_in_bytes') and isinstance(kind.size_in_bytes, property))
-
 
 class PrimitiveTypeField(BinaryField):
     """
