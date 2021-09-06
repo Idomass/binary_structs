@@ -37,7 +37,7 @@ def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], 
 
     return ns[name]
 
-def _insert_type_to_globals(kind: type, globals: dict = {}) -> str:
+def _insert_type_to_globals(kind: type, globals: dict) -> str:
     """
     Inserts the given type into the namespace
     Returns the temporary name
@@ -103,25 +103,56 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
 
     return init_var
 
-def _create_init_fn(attributes: dict = {}, globals: dict = {}) -> str:
+def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
+    """
+    Insert BinaryField class bases, each with name in the global scope,
+    and the type itself
+    """
+
+    bases_list = []
+    for parent in cls.__bases__:
+        if not issubclass(parent, BinaryField):
+            continue
+
+        logging.debug(f'Found BinaryField base class {parent.__name__}')
+        bases_list.append((_insert_type_to_globals(parent, globals), parent))
+
+    return bases_list
+
+def _create_init_fn(attributes: dict, globals: dict, bases: list[tuple[str, type]]) -> str:
     """
     Create init function and return it.
     The created function will set the class annotations
     """
 
     init_txt = []
+
+    # Init parent classes if they are binary fields
+    bases_attributes = []
+    for parent_name, parent_type in bases:
+        parent_attributes = list(parent_type.__dict__.get('__annotations__', {}).keys())
+        bases_attributes.extend(parent_attributes)
+
+        init_txt.append(f'super({parent_name}, self).__init__({", ".join(attr for attr in parent_attributes)})')
+
+    # Init variables
     for name, kind in attributes.items():
         init_txt.extend(_init_var(name, kind, globals))
 
-    return _create_fn('__init__', ['self'] + list(attributes.keys()), init_txt or ['pass'], globals)
+    return _create_fn('__init__', ['self'] + bases_attributes + list(attributes.keys()), init_txt or ['pass'], globals)
 
-def _create_bytes_fn(attributes: dict = {}, globals: dict = {}) -> str:
+def _create_bytes_fn(attributes: dict, globals: dict, bases: list[tuple[str, type]]) -> str:
     """
     Create bytes function and return it.
     The created function will call bytes() on every class member
     """
 
     lines = ['buf = b""']
+
+    for parent_name, _ in bases:
+        lines += [f'buf += super({parent_name}, self).__bytes__()']
+
+    # For class attributes
     for attr in attributes.keys():
         lines += [f'buf += bytes(self.{attr})']
 
@@ -129,8 +160,14 @@ def _create_bytes_fn(attributes: dict = {}, globals: dict = {}) -> str:
 
     return _create_fn('__bytes__', ['self'], lines, globals)
 
-def _create_size_fn(attributes: dict = {}, globals: dict = {}) -> str:
+def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
     lines = ['counter = 0']
+
+    # Add bases
+    for parent_name, _ in bases:
+        lines += [f'counter += super({parent_name}, self).size_in_bytes']
+
+    # Add class variables
     for attr in attributes.keys():
         lines += [f'counter += self.{attr}.size_in_bytes']
 
@@ -155,18 +192,21 @@ def _process_class(cls=None):
     globals['_typed_buffer'] = _typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
+    logging.debug(f'Found annotations: {annotations}')
 
-    init_fn = _create_init_fn(annotations, globals)
+    cls_bases = _get_class_bases_list(cls, globals)
+
+    init_fn = _create_init_fn(annotations, globals, cls_bases)
     setattr(NewBinaryStruct, '__init__', init_fn)
 
-    bytes_fn = _create_bytes_fn(annotations, globals)
+    bytes_fn = _create_bytes_fn(annotations, globals, cls_bases)
     setattr(NewBinaryStruct, '__bytes__', bytes_fn)
 
-    size_property = _create_size_fn(annotations, globals)
+    size_property = _create_size_fn(annotations, globals, cls_bases)
     setattr(NewBinaryStruct, 'size_in_bytes', size_property)
 
     bases = cls.__bases__ if cls.__bases__ != (object,) else tuple()
-    new_cls = type(cls.__name__, bases + (NewBinaryStruct,), dict(cls.__dict__))
+    new_cls = type(cls.__name__, (NewBinaryStruct,) + bases, dict(cls.__dict__))
 
     return new_cls
 

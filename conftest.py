@@ -2,7 +2,6 @@ import pytest
 
 from binary_struct import binary_struct
 from buffers.typed_buffer import TypedBuffer
-from buffers.binary_buffer import BinaryBuffer
 from utils.binary_field import uint8_t, uint32_t
 
 
@@ -61,5 +60,39 @@ def DynamicClass():
     class A:
         magic: uint8_t
         buf: [uint8_t]
+
+    return A
+
+@pytest.fixture
+def InheritedClass(BufferClass):
+    @binary_struct
+    class A(BufferClass):
+        magic: uint32_t
+
+    return A
+
+@pytest.fixture
+def MultipleInheritedClass(BufferClass, SimpleClass):
+    @binary_struct
+    class A(BufferClass, SimpleClass):
+        magic: uint32_t
+
+    return A
+
+@pytest.fixture
+def InheritedAndNestedClass(NestedClass, BufferClass):
+    @binary_struct
+    class A(NestedClass):
+        buf2: BufferClass
+
+    return A
+
+@pytest.fixture
+def MonsterClass(EmptyClass, NestedClass, SimpleClass, DynamicClass):
+    @binary_struct
+    class A(NestedClass, SimpleClass):
+        dynamic: DynamicClass
+        empty: EmptyClass
+        bruh: uint8_t
 
     return A

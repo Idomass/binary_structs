@@ -116,7 +116,7 @@ def test_valid_class_custom_init_implementation():
 
     assert a.times_two.value == 10
 
-def test_valid_class_custom_init_implementation_multiple_inheritence():
+def test_valid_class_custom_fn_implementation_multiple_inheritence():
     class B:
         def foo(self):
             return True
@@ -156,3 +156,58 @@ def test_valid_class_with_FORMAT_attribute():
         @binary_struct
         class A:
             FORMAT: uint32_t
+
+def test_valid_class_init_with_inheritence(InheritedClass):
+    a = InheritedClass(32, [97] * 32, 0xff)
+
+    assert a.size == 32
+    for element in a.buf:
+        assert element.value == 97
+    assert a.magic == 0xff
+
+def test_valid_class_size_with_inheritence(InheritedClass):
+    a = InheritedClass(32, [97] * 32, 0xff)
+
+    assert a.size_in_bytes == 40
+
+def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClass):
+    a = MultipleInheritedClass(32, [97] * 32, 5, 0xff)
+
+    assert a.size == 32
+    for element in a.buf:
+        assert element.value == 97
+    assert a.a == 5
+    assert a.magic == 0xff
+
+def test_valid_class_size_with_multiple_inheritence(MultipleInheritedClass):
+    a = MultipleInheritedClass(32, [97] * 32, 5, 0xff)
+
+    assert a.size_in_bytes == 41
+
+def test_invalid_class_inherited_conflict(BufferClass, DynamicClass):
+    with pytest.raises(SyntaxError):
+        @binary_struct
+        class A(BufferClass, DynamicClass):
+            pass
+
+def test_valid_class_nested_and_inherited(InheritedAndNestedClass, BufferClass):
+    a = BufferClass(32, [97] * 32)
+    b = BufferClass(16, [0x41] * 16)
+    c = InheritedAndNestedClass(a, 0xdeadbeef, b)
+
+    assert c.magic.value == 0xdeadbeef
+    assert c.buffer.size == 32
+    assert c.buffer.buf == a.buf
+
+    assert c.buf2.size == 16
+    assert c.buf2.buf == b.buf
+
+def test_valid_class_init_with_monster_class(MonsterClass, DynamicClass, BufferClass, EmptyClass):
+    a = BufferClass(3, [1, 2, 3])
+    b = DynamicClass(0xdeadbeef, [1])
+    c = EmptyClass()
+
+    monster = MonsterClass(a, 0xcafebabe, 32, b, c, 0xff)
+
+    assert monster.size_in_bytes == a.size_in_bytes + b.size_in_bytes + c.size_in_bytes \
+                                    + 4 + 1 + 1
