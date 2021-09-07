@@ -3,7 +3,7 @@ import pytest
 from copy import deepcopy
 from binary_struct import binary_struct
 from utils.binary_field import uint32_t, uint8_t
-from buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
+from buffers.binary_buffer import MaxSizeExceededError
 
 
 def test_empty_class(EmptyClass):
@@ -24,6 +24,16 @@ def test_valid_simple_class(SimpleClass):
 def test_invalid_simple_class(SimpleClass):
     with pytest.raises(TypeError):
         SimpleClass(10, 7)
+
+def test_valid_decorated_twice():
+    @binary_struct
+    @binary_struct
+    class A:
+        a: uint8_t
+
+    a = A(5)
+    assert a.size_in_bytes == 1
+    assert bytes(a) == b'\x05'
 
 def test_valid_simple_class_assert_type(SimpleClass):
     a = SimpleClass(5)
@@ -178,6 +188,7 @@ def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClass):
         assert element.value == 97
     assert a.a == 5
     assert a.magic == 0xff
+    assert a.foo()
 
 def test_valid_class_size_with_multiple_inheritence(MultipleInheritedClass):
     a = MultipleInheritedClass(32, [97] * 32, 5, 0xff)
