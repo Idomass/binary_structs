@@ -10,6 +10,7 @@ class BufferWithSize:
     size: ctypes.c_uint32
     buf: [ctypes.c_uint8, 64]
 """
+
 import sys
 import string
 import random
@@ -53,7 +54,7 @@ def _insert_type_to_globals(kind: type, globals: dict) -> str:
 
     return name
 
-def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> list[str]:
+def _init_var(name: str, kind: type or list[type, int], globals: dict) -> list[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
     Returns the python code that is required to init that variable.
@@ -87,7 +88,6 @@ def _init_var(name: str, kind: type or list[type, int], globals: dict = {}) -> l
             raise ValueError('Buffer has wrong number of parameters!')
 
     else:
-
         type_name = _insert_type_to_globals(kind, globals)
 
         init_var =  [f'try:']
@@ -114,7 +114,11 @@ def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
         if not issubclass(parent, BinaryField):
             continue
 
-        logging.debug(f'Found BinaryField base class {parent.__name__}')
+        # Don't allow to inherit from yourself
+        if parent.__name__ == 'NewBinaryStruct':
+            continue
+
+        logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
         bases_list.append((_insert_type_to_globals(parent, globals), parent))
 
     return bases_list
@@ -161,6 +165,11 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: list[tuple[str, typ
     return _create_fn('__bytes__', ['self'], lines, globals)
 
 def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
+    """
+    Generates the size property and returns the function as a string
+    Created function will search the size_in_bytes attribute of every derived class
+    """
+
     lines = ['counter = 0']
 
     # Add bases
@@ -175,42 +184,47 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
 
     return _create_fn('size_in_bytes', ['self'], lines, globals, is_property=True)
 
-def _process_class(cls=None):
+def _process_class(cls):
     """
     This function is the main logic unit, it parses the different parameters and
     returns a processed class
     """
-
-    # This will be used for creating the new class
-    class NewBinaryStruct(BinaryField):
-        pass
-
-    logging.debug(f'Processing class {cls.__name__}')
 
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['_binary_buffer'] = _binary_buffer
     globals['_typed_buffer'] = _typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
-    logging.debug(f'Found annotations: {annotations}')
+    logging.debug(f'Processing {cls}: Found annotations: {annotations}')
 
-    cls_bases = _get_class_bases_list(cls, globals)
+    # This will be used for creating the new class
+    cls_basenames_to_bases = _get_class_bases_list(cls, globals)
+    binary_struct_bases = tuple(base for _, base in cls_basenames_to_bases)
 
-    init_fn = _create_init_fn(annotations, globals, cls_bases)
+    # NewBinaryStruct Inherits from each NewBinaryStruct subclass of cls
+    logging.debug(f'Proccessing {cls}: Using {binary_struct_bases or (BinaryField,)} as base class')
+    NewBinaryStruct = type('NewBinaryStruct', binary_struct_bases or (BinaryField,), {})
+
+    init_fn = _create_init_fn(annotations, globals, cls_basenames_to_bases)
     setattr(NewBinaryStruct, '__init__', init_fn)
 
-    bytes_fn = _create_bytes_fn(annotations, globals, cls_bases)
+    bytes_fn = _create_bytes_fn(annotations, globals, cls_basenames_to_bases)
     setattr(NewBinaryStruct, '__bytes__', bytes_fn)
 
-    size_property = _create_size_fn(annotations, globals, cls_bases)
+    size_property = _create_size_fn(annotations, globals, cls_basenames_to_bases)
     setattr(NewBinaryStruct, 'size_in_bytes', size_property)
 
-    bases = cls.__bases__ if cls.__bases__ != (object,) else tuple()
-    new_cls = type(cls.__name__, (NewBinaryStruct,) + bases, dict(cls.__dict__))
+    # Since NewBinaryClass Inherits only from NewBinaryStructs', add
+    # the other bases to the new class
+    other_bases = tuple(set(cls.__bases__)^set(binary_struct_bases))
+    new_bases = other_bases if other_bases != (object,) else tuple()
+
+    logging.debug(f'Building new class with bases: {(NewBinaryStruct,) + new_bases}')
+    new_cls = type(cls.__name__, (NewBinaryStruct,) + new_bases, dict(cls.__dict__))
 
     return new_cls
 
-def binary_struct(cls=None):
+def binary_struct(cls = None):
     """
     Return the class that was passed with auto-implemented dunder methods such as bytes,
     and a new c'tor for the class

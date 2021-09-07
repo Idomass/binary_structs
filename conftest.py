@@ -14,85 +14,89 @@ def typed_buffer():
 @pytest.fixture
 def EmptyClass():
     @binary_struct
-    class A:
+    class EmptyClass:
         pass
 
-    return A
+    return EmptyClass
 
 @pytest.fixture
 def SimpleClass():
     @binary_struct
-    class A:
+    class SimpleClass:
         a: uint8_t
 
-    return A
+    return SimpleClass
 
 @pytest.fixture
 def BufferClass():
     @binary_struct
-    class A:
+    class BufferClass:
         size: uint32_t
         buf: [uint8_t, 32]
 
-    return A
+    return BufferClass
 
 @pytest.fixture
 def NestedClass(BufferClass):
     @binary_struct
-    class A:
+    class NestedClass:
         buffer: BufferClass
         magic: uint32_t
 
-    return A
+    return NestedClass
 
 @pytest.fixture
 def DuplicateClass():
     @binary_struct
-    class A:
+    class DuplicateClass:
         magic: uint32_t
         magic: uint32_t
 
-    return A
+    return DuplicateClass
 
 @pytest.fixture
 def DynamicClass():
     @binary_struct
-    class A:
+    class DynamicClass:
         magic: uint8_t
         buf: [uint8_t]
 
-    return A
+    return DynamicClass
 
 @pytest.fixture
 def InheritedClass(BufferClass):
     @binary_struct
-    class A(BufferClass):
+    class InheritedClass(BufferClass):
         magic: uint32_t
 
-    return A
+    return InheritedClass
 
 @pytest.fixture
 def MultipleInheritedClass(BufferClass, SimpleClass):
+    class SomeBaseClass:
+        def foo(self):
+            return True
+
     @binary_struct
-    class A(BufferClass, SimpleClass):
+    class MultipleInheritedClass(BufferClass, SimpleClass, SomeBaseClass):
         magic: uint32_t
 
-    return A
+    return MultipleInheritedClass
 
 @pytest.fixture
 def InheritedAndNestedClass(NestedClass, BufferClass):
     @binary_struct
-    class A(NestedClass):
+    class InheritedAndNestedClass(NestedClass):
         buf2: BufferClass
 
-    return A
+    return InheritedAndNestedClass
 
 @pytest.fixture
 def MonsterClass(EmptyClass, NestedClass, SimpleClass, DynamicClass):
     @binary_struct
-    class A(NestedClass, SimpleClass):
+    class MonsterClass(NestedClass, SimpleClass):
         dynamic: DynamicClass
         empty: EmptyClass
         bruh: uint8_t
 
-    return A
+    return MonsterClass
