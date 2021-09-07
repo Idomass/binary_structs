@@ -77,7 +77,11 @@ class int64_t(ctypes.c_int64, PrimitiveTypeField):
 class uint64_t(ctypes.c_uint64, PrimitiveTypeField):
     FORMAT = 'Q'
 
-def big_endian(cls=None):
+def big_endian_field(cls=None):
+    """
+    Makes sure that a BinaryField is big endian
+    """
+
     def wrap(cls):
         cls.FORMAT = f'>{cls.FORMAT}'
         return cls
@@ -87,34 +91,34 @@ def big_endian(cls=None):
 
     return wrap(cls)
 
-@big_endian
+@big_endian_field
 class be_int8_t(int8_t):
     pass
 
-@big_endian
+@big_endian_field
 class be_uint8_t(uint8_t):
     pass
 
-@big_endian
+@big_endian_field
 class be_int16_t(int16_t):
     pass
 
-@big_endian
+@big_endian_field
 class be_uint16_t(uint16_t):
     pass
 
-@big_endian
+@big_endian_field
 class be_int32_t(int32_t):
     pass
 
-@big_endian
+@big_endian_field
 class be_uint32_t(uint32_t):
     pass
 
-@big_endian
+@big_endian_field
 class be_int64_t(int64_t):
     pass
 
-@big_endian
+@big_endian_field
 class be_uint64_t(uint64_t):
     pass

@@ -1,5 +1,6 @@
 import pytest
 
+from endianness import big_endian
 from binary_struct import binary_struct
 from buffers.typed_buffer import TypedBuffer
 from utils.binary_field import uint8_t, uint32_t
@@ -100,3 +101,29 @@ def MonsterClass(EmptyClass, NestedClass, SimpleClass, DynamicClass):
         bruh: uint8_t
 
     return MonsterClass
+
+@pytest.fixture
+def BEBufferClass():
+    @big_endian
+    @binary_struct
+    class BEBufferClass():
+        size: uint32_t
+        buf: [uint8_t, 32]
+
+    return BEBufferClass
+
+@pytest.fixture
+def BEInheritedAndNestedClass(InheritedAndNestedClass):
+    @big_endian
+    class BEInheritedAndNestedClass(InheritedAndNestedClass):
+        pass
+
+    return BEInheritedAndNestedClass
+
+@pytest.fixture
+def BEInheritedClass(InheritedClass):
+    @big_endian
+    class BEInheritedClass(InheritedClass):
+        pass
+
+    return BEInheritedClass
