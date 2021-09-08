@@ -113,6 +113,16 @@ def BEBufferClass():
     return BEBufferClass
 
 @pytest.fixture
+def BENestedClass(BufferClass):
+    @big_endian
+    @binary_struct
+    class BENestedClass:
+        buffer: BufferClass
+        magic: uint32_t
+
+    return BENestedClass
+
+@pytest.fixture
 def BEInheritedAndNestedClass(InheritedAndNestedClass):
     @big_endian
     class BEInheritedAndNestedClass(InheritedAndNestedClass):
