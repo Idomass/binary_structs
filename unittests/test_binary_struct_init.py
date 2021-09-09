@@ -3,7 +3,7 @@ import pytest
 from copy import deepcopy
 from binary_struct import binary_struct
 from utils.binary_field import uint32_t, uint8_t
-from buffers.binary_buffer import MaxSizeExceededError
+from utils.buffers.binary_buffer import MaxSizeExceededError
 
 
 def test_empty_class(EmptyClass):

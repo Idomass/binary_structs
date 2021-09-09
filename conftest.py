@@ -2,7 +2,7 @@ import pytest
 
 from endianness import big_endian
 from binary_struct import binary_struct
-from buffers.typed_buffer import TypedBuffer
+from utils.buffers.typed_buffer import TypedBuffer
 from utils.binary_field import uint8_t, uint32_t
 
 
