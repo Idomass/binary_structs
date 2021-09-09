@@ -123,17 +123,17 @@ def BENestedClass(BufferClass):
     return BENestedClass
 
 @pytest.fixture
+def BEMultipleInheritedClass(MultipleInheritedClass):
+    @big_endian
+    class BEMultipleInheritedClass(MultipleInheritedClass):
+        pass
+
+    return BEMultipleInheritedClass
+
+@pytest.fixture
 def BEInheritedAndNestedClass(InheritedAndNestedClass):
     @big_endian
     class BEInheritedAndNestedClass(InheritedAndNestedClass):
         pass
 
     return BEInheritedAndNestedClass
-
-@pytest.fixture
-def BEInheritedClass(InheritedClass):
-    @big_endian
-    class BEInheritedClass(InheritedClass):
-        pass
-
-    return BEInheritedClass

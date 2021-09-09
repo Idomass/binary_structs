@@ -25,15 +25,12 @@ def test_invalid_simple_class(SimpleClass):
     with pytest.raises(TypeError):
         SimpleClass(10, 7)
 
-def test_valid_decorated_twice():
-    @binary_struct
-    @binary_struct
-    class A:
-        a: uint8_t
-
-    a = A(5)
-    assert a.size_in_bytes == 1
-    assert bytes(a) == b'\x05'
+def test_invalid_decorated_twice():
+    with pytest.raises(TypeError):
+        @binary_struct
+        @binary_struct
+        class A:
+            a: uint8_t
 
 def test_valid_simple_class_assert_type(SimpleClass):
     a = SimpleClass(5)
@@ -189,6 +186,26 @@ def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClass):
     assert a.a == 5
     assert a.magic == 0xff
     assert a.foo()
+
+def test_valid_class_with_multiple_inheritence_decorated_for_each(BufferClass):
+    @binary_struct
+    class A(BufferClass):
+        magic: uint8_t
+
+    @binary_struct
+    class B(A):
+        pass
+
+    @binary_struct
+    class C(B):
+        pass
+
+    a = B(32, [97] * 32, 3)
+
+    assert a.size.value == 32
+    for element in a.buf:
+        assert element.value == 97
+    assert a.magic.value == 3
 
 def test_valid_class_size_with_multiple_inheritence(MultipleInheritedClass):
     a = MultipleInheritedClass(32, [97] * 32, 5, 0xff)
