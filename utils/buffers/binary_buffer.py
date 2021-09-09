@@ -4,7 +4,7 @@ It is used by the binary_struct class instead of lists.
 """
 
 from utils.binary_field import BinaryField
-from buffers.typed_buffer import TypedBuffer
+from utils.buffers.typed_buffer import TypedBuffer
 
 
 class MaxSizeExceededError(Exception):

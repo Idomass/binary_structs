@@ -1,7 +1,7 @@
 import pytest
 
 from utils.binary_field import uint8_t
-from buffers.typed_buffer import TypedBuffer
+from utils.buffers.typed_buffer import TypedBuffer
 
 
 def test_valid_init():

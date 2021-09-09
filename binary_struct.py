@@ -15,8 +15,8 @@ import sys
 import logging
 
 from utils.binary_field import BinaryField
-from buffers.binary_buffer import BinaryBuffer as _binary_buffer
-from buffers.typed_buffer import TypedBuffer as _typed_buffer
+from utils.buffers.binary_buffer import BinaryBuffer as _binary_buffer
+from utils.buffers.typed_buffer import TypedBuffer as _typed_buffer
 
 from enum import Enum
 
