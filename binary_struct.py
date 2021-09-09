@@ -54,6 +54,18 @@ def _insert_type_to_globals(kind: type, globals: dict) -> str:
 
     return name
 
+def _get_annotations_recursively(cls: type) -> dict:
+    """
+    Returns a dictionary of annotations recuresively
+    Used for inheritence tree when multiple layers of annotations are available
+    """
+
+    annotations = cls.__dict__.get('__annotations__', {}).copy()
+    for base in cls.__bases__:
+        annotations.update(_get_annotations_recursively(base))
+
+    return annotations
+
 def _get_annotation_type(annotation) -> AnnotationType:
     """
     Returns the type of a given annotation.
@@ -135,7 +147,7 @@ def _create_init_fn(attributes: dict, globals: dict, bases: list[tuple[str, type
     # Init parent classes if they are binary fields
     for parent_name, parent_type in bases:
         # Add a default value and a super for each parent attribute
-        parent_annotations = parent_type.__dict__.get('__annotations__', {})
+        parent_annotations = _get_annotations_recursively(parent_type)
 
         init_parameters += [_init_var(name, annotation, globals)[1] for name, annotation in parent_annotations.items()]
 
@@ -200,9 +212,9 @@ def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
         if not issubclass(parent, BinaryField):
             continue
 
-        # Don't allow to inherit from yourself
+        # Don't allow to decorate a binary struct without inheritence
         if parent.__name__ == 'NewBinaryStruct':
-            continue
+            raise TypeError('Cannot decorate more then once!')
 
         logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
         bases_list.append((_insert_type_to_globals(parent, globals), parent))

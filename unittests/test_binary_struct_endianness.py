@@ -18,6 +18,19 @@ def test_invalid_class_decorator():
         class A:
             pass
 
+def test_valid_class_decorated_twice():
+    @big_endian
+    @little_endian
+    @binary_struct
+    class A:
+        a: be_int16_t
+
+    a = A(0xff)
+    assert isinstance(a.a, be_int16_t)
+    assert a.a.value == 0xff
+    assert a.size_in_bytes == 2
+    assert bytes(a) == b'\x00\xff'
+
 def test_valid_class_simple_inhertience(BufferClass):
     @big_endian
     @binary_struct
@@ -29,13 +42,13 @@ def test_valid_class_simple_inhertience(BufferClass):
     assert isinstance(a.size, be_uint32_t)
     assert isinstance(a.buf[0], be_uint8_t)
     assert isinstance(a.magic, be_uint8_t)
+    assert isinstance(a.magic2, be_uint8_t)
     assert a.size_in_bytes == 38
 
 def test_valid_class_simple_inhertience_not_binary_struct(BufferClass):
     @big_endian
     class A(BufferClass):
         magic: uint8_t
-        magic2: be_uint8_t
 
     a = A(5, [1, 2, 3])
     assert isinstance(a.size, be_uint32_t)
@@ -104,3 +117,24 @@ def test_valid_serialization_simple_inheritence(BufferClass):
     a = A(5, [1, 2, 3], 0xdeadbeef)
 
     assert bytes(a) == struct.pack('>I32sQ', 5, b'\x01\x02\x03' + b'\x00' * 29, 0xdeadbeef)
+
+def test_valid_serialization_nested_class(BENestedClass):
+    a = BENestedClass.__annotations__['buffer'](32, [97] * 32)
+    b = BENestedClass(a, 0xdeadbeef)
+
+    assert bytes(b) == struct.pack('>I32s', 32, b'a' * 32) + b'\xde\xad\xbe\xef'
+
+def test_valid_serialization_with_multiple_inheritence(BEMultipleInheritedClass):
+    a = BEMultipleInheritedClass(32, [97] * 32, 5, 0xff)
+
+    assert bytes(a) == struct.pack('>I32sB', 32,  b'a' * 32, 5) + struct.pack('>I', 0xff)
+
+def test_valid_serialization_nested_and_inherited(BEInheritedAndNestedClass):
+    # TODO yeah its not pracitical, insert the new types to the global namespace
+    # with some sort of prefix
+    a = BEInheritedAndNestedClass.__bases__[0].__bases__[0].__annotations__['buffer'](32, [97] * 32)
+    b = BEInheritedAndNestedClass.__annotations__['buf2'](16, [0x41] * 16)
+    c = BEInheritedAndNestedClass(a, 0xdeadbeef, b)
+
+    assert bytes(c) == struct.pack('>I32s', 32,  b'a' * 32) + struct.pack('>I', 0xdeadbeef) \
+           + struct.pack('>I32s', 16,  b'A' * 16 + b'\x00' * 16)
