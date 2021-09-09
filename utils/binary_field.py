@@ -1,13 +1,16 @@
 """
-Binary field is used by binary structs.
+Binary field is an interface used by binary structs.
 Each field in binary structs must implement:
     - serialization
     - deserialization
     - size property
-    - endianness for ? types
 
-Binary field enforces that each class implements these things.
-1"""
+Binary field is an interface for such these things.
+
+PrimitiveTypeField is a primitive-ctypes based field,
+and this file adds the classic primitive types that
+implement BinaryField interface
+"""
 
 import struct
 import ctypes
@@ -16,6 +19,13 @@ from abc import abstractmethod
 
 
 class BinaryField:
+    """
+    An interface for memebers of a binary_struct.
+
+    NOTE: You shouldn't use this interface in your classes,
+    instead, use the binary_struct decorator
+    """
+
     @abstractmethod
     def deserialize(self, buffer):
         pass
@@ -31,7 +41,7 @@ class BinaryField:
 
 class PrimitiveTypeField(BinaryField):
     """
-    Designed for primitive ctypes types
+    Designed for primitive ctypes types, implements BinaryField
     """
 
     def deserialize(self, buffer):
