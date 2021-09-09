@@ -1,8 +1,6 @@
 """
-This file implements a list with a maximum size.
+This file implements BinaryBuffer: a list with a type and a maximum size.
 It is used by the binary_struct class instead of lists.
-
-#TODO find a better way to hook checks
 """
 
 from utils.binary_field import BinaryField
@@ -18,7 +16,7 @@ class MaxSizeExceededError(Exception):
 
 class BinaryBuffer(TypedBuffer):
     """
-    A list with type and maximum size.
+    A list with a type and maximum size.
     Buffer will attempt to construct the object using the underlying type,
     and the passed parameter.
     """

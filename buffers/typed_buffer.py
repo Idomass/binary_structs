@@ -1,7 +1,10 @@
 """
 This file has the implementation for TypedBuffer.
-It is used by BinaryBuffer and binary_structs
+It is used by BinaryBuffer and binary_structs.
+It is used to enforce the type that is being added to
+the buffer
 """
+
 from utils.binary_field import BinaryField
 
 

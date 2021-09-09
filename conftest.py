@@ -98,7 +98,7 @@ def MonsterClass(EmptyClass, NestedClass, SimpleClass, DynamicClass):
     class MonsterClass(NestedClass, SimpleClass):
         dynamic: DynamicClass
         empty: EmptyClass
-        bruh: uint8_t
+        magic2: uint8_t
 
     return MonsterClass
 

@@ -1,8 +1,6 @@
 """
 This file exports the big_endian and little_endian decorators,
 They are used to convert a NewBinaryStruct endiannes
-
-NOTE: Only types from PrimitiveTypeField will be converted
 """
 
 import sys
@@ -16,9 +14,9 @@ from utils.binary_field import *
 
 # Endianness
 class Endianness(Enum):
-    Big = 0
-    Little = 1
-    Host = Little if sys.byteorder == 'little' else Big
+    BIG = 0
+    LITTLE = 1
+    HOST = LITTLE if sys.byteorder == 'little' else BIG
 
 def _convert_primite_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
     """
@@ -38,7 +36,7 @@ def _convert_primite_type_endianness(kind: PrimitiveTypeField, endianness: Endia
     }
     # The other way around
     be_to_le = (dict((reversed(item) for item in le_to_be.items())))
-    conversion_dict = be_to_le if endianness == Endianness.Host else le_to_be
+    conversion_dict = be_to_le if endianness == Endianness.HOST else le_to_be
 
     new_kind = conversion_dict.get(kind, kind)
     logging.debug(f'Converting {kind} into {new_kind}')
@@ -85,7 +83,7 @@ def _convert_endianness(cls: BinaryField, endianness: Endianness):
 
     return _process_class(cls)
 
-def _convert_parents_classes(cls, endianness: Endianness = Endianness.Host):
+def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     """
     Converts parent classes reucursiverly for cls
     We search for NewBinaryStructs, and convert only them recursively.
@@ -127,7 +125,7 @@ def little_endian(cls: BinaryField = None):
     """
 
     def wrap(cls):
-        return _convert_endianness(cls, Endianness.Little)
+        return _convert_parents_classes(cls, Endianness.LITTLE)
 
     if cls is None:
         return wrap
@@ -140,7 +138,7 @@ def big_endian(cls: BinaryField = None):
     """
 
     def wrap(cls):
-        return _convert_parents_classes(cls, Endianness.Big)
+        return _convert_parents_classes(cls, Endianness.BIG)
 
     if cls is None:
         return wrap

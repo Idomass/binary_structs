@@ -12,13 +12,18 @@ class BufferWithSize:
 """
 
 import sys
-import string
-import random
 import logging
 
 from utils.binary_field import BinaryField
 from buffers.binary_buffer import BinaryBuffer as _binary_buffer
 from buffers.typed_buffer import TypedBuffer as _typed_buffer
+
+from enum import Enum
+
+class AnnotationType(Enum):
+    OTHER = 0
+    TYPED_BUFFER = 1
+    BINARY_BUFFER = 2
 
 
 def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {},
@@ -41,109 +46,109 @@ def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], 
 def _insert_type_to_globals(kind: type, globals: dict) -> str:
     """
     Inserts the given type into the namespace
-    Returns the temporary name
     """
 
-    rand_str = ''.join(random.choice(string.ascii_letters) for _ in range(16))
-    name = f'__{rand_str}BINARY_STRUCT_TMP{kind.__name__}'
-
-    if globals.get(name, False):
-        raise AttributeError('Temporary variable name already exist!')
+    name = kind.__name__
 
     globals[name] = kind
 
     return name
 
-def _init_var(name: str, kind: type or list[type, int], globals: dict) -> list[str]:
+def _get_annotation_type(annotation) -> AnnotationType:
+    """
+    Returns the type of a given annotation.
+    Annotation can be a _binary_buffer, _typed_buffer or something else
+    """
+
+    if isinstance(annotation, list):
+        if len(annotation) == 2:
+            return AnnotationType.BINARY_BUFFER
+
+        elif len(annotation) == 1:
+            return AnnotationType.TYPED_BUFFER
+
+        else:
+            raise ValueError('Buffer has wrong number of parameters!')
+
+    else:
+        return AnnotationType.OTHER
+
+def _init_var(name: str, annotation, globals: dict) -> tuple[list[str], str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
-    Returns the python code that is required to init that variable.
+    Returns a tuple:
+        - python code that is required to init that variable.
+        - default value for the parameters
     """
 
     # Don't allow these type names
     if name in ('size_in_bytes', 'FORMAT'):
         raise AttributeError(f'Can\'t set attribute name to {name}')
 
-    logging.debug(f'Creating init var {name} with type {kind}')
+    logging.debug(f'Creating init var {name} with type {annotation}')
 
     # TODO match syntax asap
-    if isinstance(kind, list):
-        if len(kind) == 2:
-            # BinaryBuffer
-            kind, size = kind
-            type_name = _insert_type_to_globals(kind, globals)
+    annotation_type = _get_annotation_type(annotation)
+    if annotation_type == AnnotationType.BINARY_BUFFER:
+        annotation, size = annotation
+        type_name = _insert_type_to_globals(annotation, globals)
 
-            init_var =  [f'if {size} < len({name}):']
-            init_var += [f'   raise TypeError("list is bigger than given size!")']
-            init_var += [f'self.{name} = _binary_buffer({type_name}, {size}, {name})']
+        init_var = [f'self.{name} = _binary_buffer({type_name}, {size}, {name})']
+        default_value = f'{name} = []'
 
-        elif len(kind) == 1:
-            # TypedBuffer
-            kind = kind[0]
-            type_name = _insert_type_to_globals(kind, globals)
+    elif annotation_type == AnnotationType.TYPED_BUFFER:
+        annotation = annotation[0]
+        type_name = _insert_type_to_globals(annotation, globals)
 
-            init_var = [f'self.{name} = _typed_buffer({type_name}, {name})']
+        init_var = [f'self.{name} = _typed_buffer({type_name}, {name})']
+        default_value = f'{name} = []'
 
-        else:
-            raise ValueError('Buffer has wrong number of parameters!')
+    elif annotation_type == AnnotationType.OTHER:
+        type_name = _insert_type_to_globals(annotation, globals)
 
-    else:
-        type_name = _insert_type_to_globals(kind, globals)
-
-        init_var =  [f'try:']
-        init_var += [f'    self.{name} = {type_name}({name})']
-        init_var += [f'except (TypeError, ValueError):']
-        init_var += [f'    if not isinstance({name}, {type_name}):']
-        init_var += [f'        raise TypeError("Got invalid type for {name}")']
+        init_var =  [f'if isinstance({name}, {type_name}):']
         init_var += [f'    self.{name} = {name}']
+        init_var += [f'else:']
+        init_var += [f'    try:']
+        init_var += [f'        self.{name} = {type_name}({name})']
+        init_var += [f'    except (TypeError, ValueError):']
+        init_var += [f'        raise TypeError("Got invalid type for {name}")']
 
-    # Make sure kind implements BinaryField
-    if not issubclass(kind, BinaryField):
+        default_value = f'{name} = {type_name}()'
+
+    # Make sure annotation implements BinaryField
+    if not issubclass(annotation, BinaryField):
         raise TypeError('All fields must implement BinaryField!')
 
-    return init_var
-
-def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
-    """
-    Insert BinaryField class bases, each with name in the global scope,
-    and the type itself
-    """
-
-    bases_list = []
-    for parent in cls.__bases__:
-        if not issubclass(parent, BinaryField):
-            continue
-
-        # Don't allow to inherit from yourself
-        if parent.__name__ == 'NewBinaryStruct':
-            continue
-
-        logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
-        bases_list.append((_insert_type_to_globals(parent, globals), parent))
-
-    return bases_list
+    return init_var, default_value
 
 def _create_init_fn(attributes: dict, globals: dict, bases: list[tuple[str, type]]) -> str:
     """
     Create init function and return it.
-    The created function will set the class annotations
+
+    Each parameter has a default value of underlying_type()
     """
 
     init_txt = []
+    init_parameters = ['self']
 
     # Init parent classes if they are binary fields
-    bases_attributes = []
     for parent_name, parent_type in bases:
-        parent_attributes = list(parent_type.__dict__.get('__annotations__', {}).keys())
-        bases_attributes.extend(parent_attributes)
+        # Add a default value and a super for each parent attribute
+        parent_annotations = parent_type.__dict__.get('__annotations__', {})
 
-        init_txt.append(f'super({parent_name}, self).__init__({", ".join(attr for attr in parent_attributes)})')
+        init_parameters += [_init_var(name, annotation, globals)[1] for name, annotation in parent_annotations.items()]
+
+        init_txt.append(f'super({parent_name}, self).__init__({", ".join(param for param in parent_annotations.keys())})')
 
     # Init variables
-    for name, kind in attributes.items():
-        init_txt.extend(_init_var(name, kind, globals))
+    for name, annotation in attributes.items():
+        init_var_code, default_value = _init_var(name, annotation, globals)
 
-    return _create_fn('__init__', ['self'] + bases_attributes + list(attributes.keys()), init_txt or ['pass'], globals)
+        init_txt.extend(init_var_code)
+        init_parameters.append(default_value)
+
+    return _create_fn('__init__', init_parameters, init_txt or ['pass'], globals)
 
 def _create_bytes_fn(attributes: dict, globals: dict, bases: list[tuple[str, type]]) -> str:
     """
@@ -183,6 +188,26 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
     lines += ['return counter']
 
     return _create_fn('size_in_bytes', ['self'], lines, globals, is_property=True)
+
+def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
+    """
+    Insert BinaryField class bases, each with name in the global scope,
+    and the type itself
+    """
+
+    bases_list = []
+    for parent in cls.__bases__:
+        if not issubclass(parent, BinaryField):
+            continue
+
+        # Don't allow to inherit from yourself
+        if parent.__name__ == 'NewBinaryStruct':
+            continue
+
+        logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
+        bases_list.append((_insert_type_to_globals(parent, globals), parent))
+
+    return bases_list
 
 def _process_class(cls):
     """

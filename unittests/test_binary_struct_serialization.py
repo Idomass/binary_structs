@@ -25,6 +25,11 @@ def test_dynamic_class_serialization(DynamicClass):
     a.buf += [0x41] * 20
     assert bytes(a) == struct.pack('B70s', 10, b'a' * 50 + b'A' * 20)
 
+def test_valid_class_init_with_no_params(BufferClass):
+    a = BufferClass()
+
+    assert bytes(a) == b'\x00' * 36
+
 def test_valid_class_with_inheritence_serialization(InheritedClass):
     a = InheritedClass(32, [97] * 32, 0xff)
 

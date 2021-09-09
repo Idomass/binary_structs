@@ -65,7 +65,7 @@ def test_valid_buffer(BufferClass):
     assert isinstance(a.buf[0], uint8_t)
 
 def test_invalid_length_buffer(BufferClass):
-    with pytest.raises(TypeError):
+    with pytest.raises(MaxSizeExceededError):
         BufferClass(90, [100] * 90)
 
 def test_valid_empty_buffer(BufferClass):
@@ -222,3 +222,19 @@ def test_valid_class_init_with_monster_class(MonsterClass, DynamicClass, BufferC
 
     assert monster.size_in_bytes == a.size_in_bytes + b.size_in_bytes + c.size_in_bytes \
                                     + 4 + 1 + 1
+
+def test_valid_class_init_with_no_params(BufferClass):
+    a = BufferClass()
+
+    assert a.size.value == 0
+    for element in a.buf:
+        assert element.value == 0
+    assert a.size_in_bytes == 36
+
+def test_valid_class_init_with_kwargs(MonsterClass, DynamicClass):
+    dynamic = DynamicClass(5, [1, 2, 3])
+    a = MonsterClass(magic2=90)
+    b = MonsterClass(dynamic=dynamic)
+
+    assert a.magic2 == 90
+    assert b.dynamic == dynamic
