@@ -64,6 +64,7 @@ def DynamicClass():
 
     return DynamicClass
 
+# Inheritence testing
 @pytest.fixture
 def InheritedClass(BufferClass):
     @binary_struct
@@ -102,6 +103,7 @@ def MonsterClass(EmptyClass, NestedClass, SimpleClass, DynamicClass):
 
     return MonsterClass
 
+# Endianness testing
 @pytest.fixture
 def BEBufferClass():
     @big_endian
