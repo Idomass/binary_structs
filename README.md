@@ -179,6 +179,56 @@ passed to it has the same type as the underlying type it was declared with.
 A `BinaryBuffer` is a `TypedBuffer` that also enforces size, and it will create empty instances of its underlying type when
 it is created
 
+## Known issues
+### Super
+When using super in order to call the generated function, you must use `super(type(self), self)` instead of
+the regular `super()`. This happens because when the code is first executed, the default parameter of super is not
+`NewBinaryStruct`.
+
+#### Suggested solution
+One suggested solution is re-building all the classes function, it might help fixing the super problem
+
+### Endianness conversion
+Endianness converstion introduced 2 main issues:
+- A horrible amount of overhead was added:
+
+    This happens because of the way `@binary_struct` decorator operates.
+    It generates all the the code from the annotations types, that might have the wrong endianness.
+    The endian decorators change the annotations recursively - for primitive types the use a pre-defined conversion
+    dictionary, and for `BinaryFields` they rebuild the classes the same way `@binary_struct` would.
+    This means that every class is being built twice!
+
+- Nested `BinaryFields` cannot be referenced easily:
+
+    Consider the following:
+    ```python
+    @binary_struct
+    class Base:
+        num: uint32_t
+
+    @big_endian
+    class Nested:
+        base: Base
+        num2: uint8_t
+    ```
+    After converting `Nested` to big endian, we will need to be able to initialize `Base`. But, `Base` cannot initialize
+    `Nested` class, because `Base` was converted to a big-endian version of itself, and `@binary_structs` enforce types that are
+    being passed to it.
+    The only way to reference the converted `Base` class is:
+    ```python
+    # This gets worse when there are multiple inheritence levels
+    NewBase = Nested.__annotations__['base'][0]
+    ```
+
+#### Suggested solution
+For both of these problems, there is a suggested solution: A caching system that inserts converted types to the global namespace.
+If such system will be implemented, it will reduce overhead drastically, and it will be able to insert the converted nested-types into the global namespace.
+
+There are 3 types of endianness values available for each `BinaryField`: big, little, and none.
+When declaring a `@binary_struct`, it have no endianness by default and the passed fields will be used.
+But when converting a `@binary_struct`, an instance of the converted type can be inserted into some sort of cache, and it can be pulled from the cache if more conversions happen.
+
+
 ## WIP/TODO Features
 - [ ] Test coverage for `little_endian`
 - [ ] More test cases for inheritence
