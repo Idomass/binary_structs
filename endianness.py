@@ -14,8 +14,9 @@ from utils.binary_field import *
 
 # Endianness
 class Endianness(Enum):
-    BIG = 0
-    LITTLE = 1
+    NONE = ''
+    BIG = 'BE'
+    LITTLE = 'LE'
     HOST = LITTLE if sys.byteorder == 'little' else BIG
 
 def _convert_primite_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
