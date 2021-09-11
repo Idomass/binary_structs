@@ -43,7 +43,6 @@ def _copy_cls(cls: type, new_bases: tuple) -> type:
 
     return type(cls.__name__, new_bases, cls_dict)
 
-
 def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {},
                is_property: bool = False):
     """
@@ -239,6 +238,17 @@ def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
 
     return bases_list
 
+def _set_annotations_as_attributes(cls):
+    """
+    Set class annotations as attributes, to allow easy access to underlying type
+    Can be useful for class that had their endianness converted
+    """
+
+    for name, annotation_type in cls.__dict__.get('__annotations__', {}).items():
+        kind = annotation_type[0] if isinstance(annotation_type, list) else annotation_type
+
+        setattr(cls, name, kind)
+
 class BinaryStructHasher:
     """
     This class gets a type in init, and calculates a hash
@@ -340,6 +350,8 @@ def _process_class(cls: BinaryStructHasher):
 
     logging.debug(f'Building new class with bases: {(BinaryStruct,) + new_bases}')
     new_cls = _copy_cls(cls, (BinaryStruct,) + new_bases)
+
+    _set_annotations_as_attributes(new_cls)
 
     return new_cls
 

@@ -126,14 +126,28 @@ def test_valid_class_unrelated_inheritence_is_still_valid(BufferClass):
     assert B.__bases__[1] is A
 
 def test_valid_class_nested_class(BENestedClass):
-    # TODO, is there a better solution?
-    a = BENestedClass.__annotations__['buffer'](32, [97] * 32)
+    a = BENestedClass.buffer(32, [97] * 32)
     b = BENestedClass(a, 0xdeadbeef)
 
     assert isinstance(b.buffer.size, be_uint32_t)
     assert isinstance(b.buffer.buf[0], be_uint8_t)
     assert isinstance(b.magic, be_uint32_t)
     assert b.size_in_bytes == a.size_in_bytes + 4
+
+def test_valid_class_nested_twice(BENestedClass):
+    @big_endian
+    @binary_struct
+    class A:
+        nested: BENestedClass
+
+    a = A.nested.buffer(32, [97] * 32)
+    b = A.nested(a, 0xdeadbeef)
+    c = A(b)
+
+    assert isinstance(c.nested.buffer.size, be_uint32_t)
+    assert isinstance(c.nested.buffer.buf[0], be_uint8_t)
+    assert isinstance(c.nested.magic, be_uint32_t)
+    assert c.size_in_bytes == a.size_in_bytes + 4
 
 # Serialization and Deserialization Tests
 def test_valid_serialization_simple(BEBufferClass):
@@ -163,13 +177,9 @@ def test_valid_serialization_with_multiple_inheritence(BEMultipleInheritedClass)
     assert bytes(a) == struct.pack('>I32sB', 32,  b'a' * 32, 5) + struct.pack('>I', 0xff)
 
 def test_valid_serialization_nested_and_inherited(BEInheritedAndNestedClass):
-    # TODO yeah its not pracitical, insert the new types to the global namespace
-    # with some sort of prefix
-
-    a = BEInheritedAndNestedClass.__bases__[0].__bases__[0].__annotations__['buffer'](32, [97] * 32)
-    b = BEInheritedAndNestedClass.__bases__[0].__annotations__['buf2'](16, [0x41] * 16)
+    a = BEInheritedAndNestedClass.buffer(32, [97] * 32)
+    b = BEInheritedAndNestedClass.buf2(16, [0x41] * 16)
     c = BEInheritedAndNestedClass(a, 0xdeadbeef, b)
-
 
     assert bytes(c) == struct.pack('>I32s', 32,  b'a' * 32) + struct.pack('>I', 0xdeadbeef) \
            + struct.pack('>I32s', 16,  b'A' * 16 + b'\x00' * 16)
