@@ -9,7 +9,7 @@ import logging
 from enum import Enum
 
 from utils.binary_field import *
-from binary_struct import binary_struct
+from binary_struct import binary_struct, _copy_cls
 
 
 # Endianness
@@ -116,7 +116,7 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
             new_bases.append(_convert_parents_classes(base, endianness))
 
     # Rebuild class using new bases
-    tmp_cls = type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
+    tmp_cls = _copy_cls(cls, tuple(new_bases) or (object,))
 
     return _convert_endianness(tmp_cls, endianness) if is_binary_struct else tmp_cls
 

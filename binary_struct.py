@@ -27,6 +27,22 @@ class AnnotationType(Enum):
     TYPED_BUFFER = 1
     BINARY_BUFFER = 2
 
+def _copy_cls(cls: type, new_bases: tuple) -> type:
+    """
+    Copy a class and return the newly created one
+    This method will copy the annotations of the new class too
+    """
+
+    # copy dict except __weakref__, __dict__
+    cls_dict = dict(cls.__dict__)
+    cls_dict.pop('__weakref__', None)
+    cls_dict.pop('__dict__', None)
+
+    # deep copy __annotations__
+    cls_dict['__annotations__'] = dict(cls.__dict__.get('__annotations__', {}))
+
+    return type(cls.__name__, new_bases, cls_dict)
+
 
 def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {},
                is_property: bool = False):
@@ -251,10 +267,21 @@ class BinaryStructHasher:
             hashes.append(hash(BinaryStructHasher(base)))
 
         for name, annotation in self.type.__dict__.get('__annotations__', {}).items():
-            if isinstance(annotation, list):
-                annotation = tuple(annotation)
-            hashes.append(str(name))
-            hashes.append(hash(annotation))
+            hashes.append(hash(name))
+
+            annotation_type = _get_annotation_type(annotation)
+            if annotation_type == AnnotationType.BINARY_BUFFER:
+                underlying_type, size = annotation
+
+                hashes.append(hash(size))
+
+            elif annotation_type == AnnotationType.TYPED_BUFFER:
+                underlying_type = annotation[0]
+
+            elif annotation_type == AnnotationType.OTHER:
+                underlying_type = annotation
+
+            hashes.append(hash(BinaryStructHasher(underlying_type)))
 
         return hash(tuple(hashes))
 
@@ -267,15 +294,11 @@ class BinaryStructHasher:
         and the same annotations
         """
 
-        # Check annotations
-        other_annotations   = other.type.__dict__.get('__annotations__', {})
-        self_annotations    = self.type.__dict__.get('__annotations__', {})
-
         # Check bases
         other_bases = other.type.__bases__
         self_bases  = self.type.__bases__
 
-        return self_bases == other_bases and other_annotations == self_annotations
+        return self_bases == other_bases
 
 @lru_cache
 def _process_class(cls: BinaryStructHasher):
@@ -316,7 +339,7 @@ def _process_class(cls: BinaryStructHasher):
     new_bases = other_bases if other_bases != (object,) else tuple()
 
     logging.debug(f'Building new class with bases: {(BinaryStruct,) + new_bases}')
-    new_cls = type(cls.__name__, (BinaryStruct,) + new_bases, dict(cls.__dict__))
+    new_cls = _copy_cls(cls, (BinaryStruct,) + new_bases)
 
     return new_cls
 
@@ -334,7 +357,8 @@ def binary_struct(cls = None):
         # If cache was used, the class must be copied
         if new_hits > old_hits:
             logging.debug(f'Cache hit, copying {new_cls}')
-            return type(new_cls.__name__, new_cls.__bases__, dict(new_cls.__dict__))
+
+            return _copy_cls(new_cls, new_cls.__bases__)
         else:
             return  new_cls
 

@@ -57,14 +57,47 @@ def test_valid_class_simple_inhertience_not_binary_struct(BufferClass):
     assert a.size_in_bytes == 36
 
 def test_valid_class_simple_inhertience_old_still_valid(BufferClass):
-    @big_endian
-    @binary_struct
-    class A(BufferClass):
-        magic: uint8_t
+    A = big_endian(BufferClass)
 
     a = BufferClass(5, [1, 2, 3])
     assert isinstance(a.size, uint32_t)
     assert isinstance(a.buf[0], uint8_t)
+
+def test_valid_class_old_still_valid():
+    @binary_struct
+    class A:
+        magic: uint32_t
+
+    B = big_endian(A)
+
+    a = A(5)
+    assert isinstance(a.magic, uint32_t)
+
+def test_valid_class_old_still_valid_nested():
+    @binary_struct
+    class A:
+        magic: uint32_t
+
+    @binary_struct
+    class C:
+        a: A
+
+    D = big_endian(C)
+
+    assert C.__annotations__['a'] is A
+
+def test_valid_class_old_still_valid_inheritence():
+    @binary_struct
+    class A:
+        magic: uint32_t
+
+    @binary_struct
+    class C(A):
+        pass
+
+    D = big_endian(C)
+
+    assert C.__bases__[0].__bases__[0] is A
 
 def test_valid_class_longer_inheritence_tree(BufferClass):
     class A(BufferClass):
@@ -132,9 +165,11 @@ def test_valid_serialization_with_multiple_inheritence(BEMultipleInheritedClass)
 def test_valid_serialization_nested_and_inherited(BEInheritedAndNestedClass):
     # TODO yeah its not pracitical, insert the new types to the global namespace
     # with some sort of prefix
+
     a = BEInheritedAndNestedClass.__bases__[0].__bases__[0].__annotations__['buffer'](32, [97] * 32)
-    b = BEInheritedAndNestedClass.__annotations__['buf2'](16, [0x41] * 16)
+    b = BEInheritedAndNestedClass.__bases__[0].__annotations__['buf2'](16, [0x41] * 16)
     c = BEInheritedAndNestedClass(a, 0xdeadbeef, b)
+
 
     assert bytes(c) == struct.pack('>I32s', 32,  b'a' * 32) + struct.pack('>I', 0xdeadbeef) \
            + struct.pack('>I32s', 16,  b'A' * 16 + b'\x00' * 16)
