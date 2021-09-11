@@ -14,11 +14,13 @@ class BufferWithSize:
 import sys
 import logging
 
-from utils.binary_field import BinaryField
+from utils.binary_field import BinaryField, PrimitiveTypeField
 from utils.buffers.binary_buffer import BinaryBuffer as _binary_buffer
 from utils.buffers.typed_buffer import TypedBuffer as _typed_buffer
 
 from enum import Enum
+from functools import lru_cache
+
 
 class AnnotationType(Enum):
     OTHER = 0
@@ -213,7 +215,7 @@ def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
             continue
 
         # Don't allow to decorate a binary struct without inheritence
-        if parent.__name__ == 'NewBinaryStruct':
+        if parent.__name__ == 'BinaryStruct':
             raise TypeError('Cannot decorate more then once!')
 
         logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
@@ -221,43 +223,100 @@ def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
 
     return bases_list
 
-def _process_class(cls):
+class BinaryStructHasher:
+    """
+    This class gets a type in init, and calculates a hash
+    based on the given annotations and their order.
+    This hash calculation ignores inheritence, and can only work
+    for simple BinaryStructs
+    """
+
+    def __init__(self, kind: type) -> None:
+        self._type = kind
+
+        self._hash_value = hash(self.type) if issubclass(self.type, PrimitiveTypeField) \
+                           else self._calculate_hash()
+
+    @property
+    def type(self):
+        return self._type
+
+    def _calculate_hash(self) -> int:
+        """
+        Calculate the hash using the given types annotations
+        """
+
+        hashes = []
+        for base in self.type.__bases__:
+            hashes.append(hash(BinaryStructHasher(base)))
+
+        for name, annotation in self.type.__dict__.get('__annotations__', {}).items():
+            if isinstance(annotation, list):
+                annotation = tuple(annotation)
+            hashes.append(str(name))
+            hashes.append(hash(annotation))
+
+        return hash(tuple(hashes))
+
+    def __hash__(self) -> int:
+        return self._hash_value
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Two BinaryStructHasher will be treated as equal if they have the same bases
+        and the same annotations
+        """
+
+        # Check annotations
+        other_annotations   = other.type.__dict__.get('__annotations__', {})
+        self_annotations    = self.type.__dict__.get('__annotations__', {})
+
+        # Check bases
+        other_bases = other.type.__bases__
+        self_bases  = self.type.__bases__
+
+        return self_bases == other_bases and other_annotations == self_annotations
+
+@lru_cache
+def _process_class(cls: BinaryStructHasher):
     """
     This function is the main logic unit, it parses the different parameters and
     returns a processed class
     """
+
+    cls = cls.type
 
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['_binary_buffer'] = _binary_buffer
     globals['_typed_buffer'] = _typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
-    logging.debug(f'Processing {cls}: Found annotations: {annotations}')
+    logging.debug(f'Building {cls}: Found annotations: {annotations}')
 
     # This will be used for creating the new class
     cls_basenames_to_bases = _get_class_bases_list(cls, globals)
     binary_struct_bases = tuple(base for _, base in cls_basenames_to_bases)
 
-    # NewBinaryStruct Inherits from each NewBinaryStruct subclass of cls
+    # BinaryStruct Inherits from each BinaryStruct subclass of cls
     logging.debug(f'Proccessing {cls}: Using {binary_struct_bases or (BinaryField,)} as base class')
-    NewBinaryStruct = type('NewBinaryStruct', binary_struct_bases or (BinaryField,), {})
+    BinaryStruct = type('BinaryStruct', binary_struct_bases or (BinaryField,), {})
 
     init_fn = _create_init_fn(annotations, globals, cls_basenames_to_bases)
-    setattr(NewBinaryStruct, '__init__', init_fn)
+    setattr(BinaryStruct, '__init__', init_fn)
 
     bytes_fn = _create_bytes_fn(annotations, globals, cls_basenames_to_bases)
-    setattr(NewBinaryStruct, '__bytes__', bytes_fn)
+    setattr(BinaryStruct, '__bytes__', bytes_fn)
 
     size_property = _create_size_fn(annotations, globals, cls_basenames_to_bases)
-    setattr(NewBinaryStruct, 'size_in_bytes', size_property)
+    setattr(BinaryStruct, 'size_in_bytes', size_property)
 
-    # Since NewBinaryClass Inherits only from NewBinaryStructs', add
+    # Since NewBinaryClass Inherits only from BinaryStructs', add
     # the other bases to the new class
     other_bases = tuple(set(cls.__bases__)^set(binary_struct_bases))
     new_bases = other_bases if other_bases != (object,) else tuple()
 
-    logging.debug(f'Building new class with bases: {(NewBinaryStruct,) + new_bases}')
-    new_cls = type(cls.__name__, (NewBinaryStruct,) + new_bases, dict(cls.__dict__))
+    logging.debug(f'Building new class with bases: {(BinaryStruct,) + new_bases}')
+    new_cls = type(cls.__name__, (BinaryStruct,) + new_bases, dict(cls.__dict__))
 
     return new_cls
 
@@ -268,7 +327,16 @@ def binary_struct(cls = None):
     """
 
     def wrap(cls):
-        return _process_class(cls)
+        old_hits = _process_class.cache_info().hits
+        new_cls = _process_class(BinaryStructHasher(cls))
+        new_hits = _process_class.cache_info().hits
+
+        # If cache was used, the class must be copied
+        if new_hits > old_hits:
+            logging.debug(f'Cache hit, copying {new_cls}')
+            return type(new_cls.__name__, new_cls.__bases__, dict(new_cls.__dict__))
+        else:
+            return  new_cls
 
     if cls is None:
         return wrap

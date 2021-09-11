@@ -1,6 +1,6 @@
 """
 This file exports the big_endian and little_endian decorators,
-They are used to convert a NewBinaryStruct endiannes
+They are used to convert a BinaryStruct endiannes
 """
 
 import sys
@@ -8,8 +8,8 @@ import logging
 
 from enum import Enum
 
-from binary_struct import _process_class
 from utils.binary_field import *
+from binary_struct import binary_struct
 
 
 # Endianness
@@ -19,7 +19,7 @@ class Endianness(Enum):
     LITTLE = 'LE'
     HOST = LITTLE if sys.byteorder == 'little' else BIG
 
-def _convert_primite_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
+def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
     """
     Convert PrimitiveTypeFields to the given endianness.
     If no match is found, return the given kind
@@ -37,7 +37,7 @@ def _convert_primite_type_endianness(kind: PrimitiveTypeField, endianness: Endia
     }
     # The other way around
     be_to_le = (dict((reversed(item) for item in le_to_be.items())))
-    conversion_dict = be_to_le if endianness == Endianness.HOST else le_to_be
+    conversion_dict = be_to_le if endianness == Endianness.LITTLE else le_to_be
 
     new_kind = conversion_dict.get(kind, kind)
     logging.debug(f'Converting {kind} into {new_kind}')
@@ -47,8 +47,8 @@ def _convert_primite_type_endianness(kind: PrimitiveTypeField, endianness: Endia
 def _convert_class_annotations_endianness(cls, endianness: Endianness):
     """
     Replace class annotations with the fitting endianness annotations
-    This method will use _convert_primite_type_endianness for PrimitiveTypeField,
-    and will use _convert_parents_classes for other NewBinaryStructs
+    This method will use _convert_primitive_type_endianness for PrimitiveTypeField,
+    and will use _convert_parents_classes for other BinaryStructs
     """
 
     annotations = cls.__dict__.get('__annotations__', {})
@@ -56,7 +56,7 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
         kind = annotation_type[0] if isinstance(annotation_type, list) else annotation_type
 
         if issubclass(kind, PrimitiveTypeField):
-            new_kind = _convert_primite_type_endianness(kind, kind)
+            new_kind = _convert_primitive_type_endianness(kind, endianness)
 
         elif issubclass(kind, BinaryField):
             new_kind = _convert_parents_classes(kind, endianness)
@@ -82,12 +82,12 @@ def _convert_endianness(cls: BinaryField, endianness: Endianness):
     logging.debug(f'Processing {cls}: Found BinaryStruct class - {cls}')
     cls = _convert_class_annotations_endianness(cls, endianness)
 
-    return _process_class(cls)
+    return binary_struct(cls)
 
 def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     """
     Converts parent classes reucursiverly for cls
-    We search for NewBinaryStructs, and convert only them recursively.
+    We search for BinaryStructs, and convert only them recursively.
     For other classes, we only replace the base classes if neccesary
     """
 
@@ -101,7 +101,7 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
         if not issubclass(base, BinaryField):
             new_bases.append(base)
 
-        elif base.__name__ == 'NewBinaryStruct':
+        elif base.__name__ == 'BinaryStruct':
             is_binary_struct = True
             # This means our base should be converted
             # First, convert its bases

@@ -128,8 +128,8 @@ BinaryStruct
 
 ## Implementation
 ### Abstract
-In binary_structs, for each class we decorate The class will be reconstructed and a new parent class will be added, named `NewBinaryStruct`. `NewBinaryStruct` inherits from `BinaryField` interface.
-The generated code will be created for `NewBinaryStruct`, and the original class will be duplicated and recreated
+In binary_structs, for each class we decorate The class will be reconstructed and a new parent class will be added, named `BinaryStruct`. `BinaryStruct` inherits from `BinaryField` interface.
+The generated code will be created for `BinaryStruct`, and the original class will be duplicated and recreated
 with a new parent class.
 
 ### BinaryField
@@ -149,7 +149,7 @@ class BufferWithSize:
 
 Will generate the following class:
 ```python
-class NewBinaryStruct(BinaryField):
+class BinaryStruct(BinaryField):
     def __init__(self, size = uint32_t(), data = []):
         # Generated code
         pass
@@ -162,10 +162,10 @@ class NewBinaryStruct(BinaryField):
         # Even more generated code
         pass
 
-class BufferWithSize(NewBinaryStruct):
+class BufferWithSize(BinaryStruct):
     pass
 ```
-`NewBinaryStruct` is not added to the global variables, so you don't need to worry about referencing it.
+`BinaryStruct` is not added to the global variables, so you don't need to worry about referencing it.
 This is necessary for allowing the `super()` syntax, and for keeping the original class intact.
 
 ### TypedBuffer and BinaryBuffer
@@ -183,7 +183,7 @@ it is created
 ### Super
 When using super in order to call the generated function, you must use `super(type(self), self)` instead of
 the regular `super()`. This happens because when the code is first executed, the default parameter of super is not
-`NewBinaryStruct`.
+`BinaryStruct`.
 
 #### Suggested solution
 One suggested solution is re-building all the classes function, it might help fixing the super problem
