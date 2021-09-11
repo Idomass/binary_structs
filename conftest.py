@@ -103,43 +103,6 @@ def MonsterClass(EmptyClass, NestedClass, SimpleClass, DynamicClass):
 
     return MonsterClass
 
-# Endianness testing
-@pytest.fixture
-def BEBufferClass():
-    @big_endian
-    @binary_struct
-    class BEBufferClass():
-        size: uint32_t
-        buf: [uint8_t, 32]
-
-    return BEBufferClass
-
-@pytest.fixture
-def BENestedClass(BufferClass):
-    @big_endian
-    @binary_struct
-    class BENestedClass:
-        buffer: BufferClass
-        magic: uint32_t
-
-    return BENestedClass
-
-@pytest.fixture
-def BEMultipleInheritedClass(MultipleInheritedClass):
-    @big_endian
-    class BEMultipleInheritedClass(MultipleInheritedClass):
-        pass
-
-    return BEMultipleInheritedClass
-
-@pytest.fixture
-def BEInheritedAndNestedClass(InheritedAndNestedClass):
-    @big_endian
-    class BEInheritedAndNestedClass(InheritedAndNestedClass):
-        pass
-
-    return BEInheritedAndNestedClass
-
 # Caching
 @pytest.fixture(autouse=True)
 def clear_cache():

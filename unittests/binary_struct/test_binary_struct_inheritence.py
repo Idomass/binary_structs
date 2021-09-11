@@ -4,7 +4,6 @@ from binary_struct import binary_struct
 from utils.binary_field import uint8_t
 
 
-
 def test_valid_class_custom_fn_implementation_multiple_inheritence():
     class B:
         def foo(self):
@@ -29,10 +28,6 @@ def test_valid_class_init_with_inheritence(InheritedClass):
     for element in a.buf:
         assert element.value == 97
     assert a.magic == 0xff
-
-def test_valid_class_size_with_inheritence(InheritedClass):
-    a = InheritedClass(32, [97] * 32, 0xff)
-
     assert a.size_in_bytes == 40
 
 def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClass):
@@ -44,6 +39,7 @@ def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClass):
     assert a.a == 5
     assert a.magic == 0xff
     assert a.foo()
+    assert a.size_in_bytes == 41
 
 def test_valid_class_with_multiple_inheritence_decorated_for_each(BufferClass):
     @binary_struct
@@ -64,13 +60,9 @@ def test_valid_class_with_multiple_inheritence_decorated_for_each(BufferClass):
     for element in a.buf:
         assert element.value == 97
     assert a.magic.value == 3
+    assert a.size_in_bytes == 37
 
-def test_valid_class_size_with_multiple_inheritence(MultipleInheritedClass):
-    a = MultipleInheritedClass(32, [97] * 32, 5, 0xff)
-
-    assert a.size_in_bytes == 41
-
-def test_invalid_class_inherited_conflict(BufferClass, DynamicClass):
+def test_invalid_class_inherited_name_conflict(BufferClass, DynamicClass):
     with pytest.raises(SyntaxError):
         @binary_struct
         class A(BufferClass, DynamicClass):
