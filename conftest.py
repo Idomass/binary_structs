@@ -1,9 +1,9 @@
 import pytest
 
 from endianness import big_endian
-from binary_struct import binary_struct
 from utils.buffers.typed_buffer import TypedBuffer
 from utils.binary_field import uint8_t, uint32_t
+from binary_struct import binary_struct, _process_class
 
 
 # buffers
@@ -139,3 +139,8 @@ def BEInheritedAndNestedClass(InheritedAndNestedClass):
         pass
 
     return BEInheritedAndNestedClass
+
+# Caching
+@pytest.fixture(autouse=True)
+def clear_cache():
+    _process_class.cache_clear()

@@ -18,11 +18,11 @@ class HeavyClass(A):
 
 
 @pytest.mark.parametrize('cls', [LightClass, HeavyClass])
-def test_binary_struct_performence(benchmark, cls):
+def test_binary_struct_performance(benchmark, cls):
     benchmark(binary_struct, cls)
 
 @pytest.mark.parametrize('cls', [LightClass, HeavyClass])
-def test_endianness_performence(benchmark, cls):
+def test_endianness_performance(benchmark, cls):
     decorated = binary_struct(cls)
 
     benchmark(big_endian, decorated)
