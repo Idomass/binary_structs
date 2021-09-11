@@ -231,7 +231,7 @@ But when converting a `@binary_struct`, an instance of the converted type can be
 
 ## WIP/TODO Features
 - [X] Caching support
-- [ ] Test coverage for `little_endian`
+- [X] Test coverage for `little_endian`
 - [ ] More test cases for inheritence
 - [ ] Add `__str__` and `__repr__`
 - [ ] Add `+` operator between `binary_struct`

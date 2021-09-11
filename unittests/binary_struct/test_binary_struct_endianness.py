@@ -1,11 +1,12 @@
 import pytest
 import struct
 
-from binary_struct import binary_struct
-from endianness import big_endian, little_endian
 from utils.binary_field import *
+from binary_struct import binary_struct
+from endianness import Endianness, big_endian, little_endian
 
 
+# Initialization testing
 def test_valid_class_empty():
     @big_endian
     @binary_struct
@@ -125,20 +126,32 @@ def test_valid_class_unrelated_inheritence_is_still_valid(BufferClass):
 
     assert B.__bases__[1] is A
 
-def test_valid_class_nested_class(BENestedClass):
-    a = BENestedClass.buffer(32, [97] * 32)
-    b = BENestedClass(a, 0xdeadbeef)
+def test_valid_class_nested_class_default_value(NestedClass):
+    EndianClass = big_endian(NestedClass)
+    b = EndianClass(magic=0xdeadbeef)
+
+    assert b.magic.value == 0xdeadbeef
+    assert b.buffer.size.value == 0
+    for element in b.buffer.buf:
+        assert element.value == 0
+
+def test_valid_class_nested_class(NestedClass):
+    EndianClass = big_endian(NestedClass)
+    a = EndianClass.buffer(32, [97] * 32)
+    b = EndianClass(a, 0xdeadbeef)
 
     assert isinstance(b.buffer.size, be_uint32_t)
     assert isinstance(b.buffer.buf[0], be_uint8_t)
     assert isinstance(b.magic, be_uint32_t)
     assert b.size_in_bytes == a.size_in_bytes + 4
 
-def test_valid_class_nested_twice(BENestedClass):
+def test_valid_class_nested_twice(NestedClass):
+    EndianClass = big_endian(NestedClass)
+
     @big_endian
     @binary_struct
     class A:
-        nested: BENestedClass
+        nested: EndianClass
 
     a = A.nested.buffer(32, [97] * 32)
     b = A.nested(a, 0xdeadbeef)
@@ -150,36 +163,64 @@ def test_valid_class_nested_twice(BENestedClass):
     assert c.size_in_bytes == a.size_in_bytes + 4
 
 # Serialization and Deserialization Tests
-def test_valid_serialization_simple(BEBufferClass):
-    a = BEBufferClass(20, [0x41] * 32)
+@pytest.mark.parametrize('decorator, format', [(big_endian, '>'), (little_endian, '<')])
+def test_valid_serialization_simple(BufferClass, decorator, format):
+    EndianClass = decorator(BufferClass)
+    a = EndianClass(20, [0x41] * 32)
 
-    assert bytes(a) == struct.pack('>I32s', 20, b'A' * 32)
+    assert bytes(a) == struct.pack(f'{format}I32s', 20, b'A' * 32)
 
-def test_valid_serialization_simple_inheritence(BufferClass):
-    @big_endian
+@pytest.mark.parametrize('decorator, format', [(big_endian, '>'), (little_endian, '<')])
+def test_valid_serialization_simple_inheritence(BufferClass, decorator, format):
     @binary_struct
     class A(BufferClass):
         magic: uint64_t
 
-    a = A(5, [1, 2, 3], 0xdeadbeef)
+    EndianClass = decorator(A)
+    a = EndianClass(5, [1, 2, 3], 0xdeadbeef)
 
-    assert bytes(a) == struct.pack('>I32sQ', 5, b'\x01\x02\x03' + b'\x00' * 29, 0xdeadbeef)
+    assert bytes(a) == struct.pack(f'{format}I32sQ', 5, b'\x01\x02\x03' + b'\x00' * 29, 0xdeadbeef)
 
-def test_valid_serialization_nested_class(BENestedClass):
-    a = BENestedClass.__annotations__['buffer'](32, [97] * 32)
-    b = BENestedClass(a, 0xdeadbeef)
+@pytest.mark.parametrize('decorator, format', [(big_endian, '>'), (little_endian, '<')])
+def test_valid_serialization_nested_class(NestedClass, decorator, format):
+    EndianClass = decorator(NestedClass)
+    a = EndianClass.buffer(32, [97] * 32)
+    b = EndianClass(a, 0xdeadbeef)
 
-    assert bytes(b) == struct.pack('>I32s', 32, b'a' * 32) + b'\xde\xad\xbe\xef'
+    assert bytes(b) == struct.pack(f'{format}I32sI', 32, b'a' * 32, 0xdeadbeef)
 
-def test_valid_serialization_with_multiple_inheritence(BEMultipleInheritedClass):
-    a = BEMultipleInheritedClass(32, [97] * 32, 5, 0xff)
+@pytest.mark.parametrize('decorator, format', [(big_endian, '>'), (little_endian, '<')])
+def test_valid_serialization_with_multiple_inheritence(MultipleInheritedClass, decorator, format):
+    EndianClass = decorator(MultipleInheritedClass)
+    a = EndianClass(32, [97] * 32, 5, 0xff)
 
-    assert bytes(a) == struct.pack('>I32sB', 32,  b'a' * 32, 5) + struct.pack('>I', 0xff)
+    assert bytes(a) == struct.pack(f'{format}I32sBI', 32,  b'a' * 32, 5, 0xff)
 
-def test_valid_serialization_nested_and_inherited(BEInheritedAndNestedClass):
-    a = BEInheritedAndNestedClass.buffer(32, [97] * 32)
-    b = BEInheritedAndNestedClass.buf2(16, [0x41] * 16)
-    c = BEInheritedAndNestedClass(a, 0xdeadbeef, b)
+@pytest.mark.parametrize('decorator, format', [(big_endian, '>'), (little_endian, '<')])
+def test_valid_serialization_nested_class_default_value(NestedClass, decorator, format):
+    EndianClass = decorator(NestedClass)
+    b = EndianClass(magic=0xdeadbeef)
 
-    assert bytes(c) == struct.pack('>I32s', 32,  b'a' * 32) + struct.pack('>I', 0xdeadbeef) \
-           + struct.pack('>I32s', 16,  b'A' * 16 + b'\x00' * 16)
+    assert bytes(b) == struct.pack(f'{format}I32sI', 0, b'\x00' * 32, 0xdeadbeef)
+
+@pytest.mark.parametrize('decorator, format', [(big_endian, '>'), (little_endian, '<')])
+def test_valid_serialization_nested_and_inherited(InheritedAndNestedClass, decorator, format):
+    EndianClass = decorator(InheritedAndNestedClass)
+    a = EndianClass.buffer(32, [97] * 32)
+    b = EndianClass.buf2(16, [0x41] * 16)
+    c = EndianClass(a, 0xdeadbeef, b)
+
+    assert bytes(c) == struct.pack(f'{format}I32sII32s', 32,  b'a' * 32, 0xdeadbeef,
+                                   16,  b'A' * 16 + b'\x00' * 16)
+
+@pytest.mark.parametrize('decorator, format', [(big_endian, '>'), (little_endian, '<')])
+def test_valid_serialization_monster_class(MonsterClass, decorator, format):
+    EndianClass = decorator(MonsterClass)
+    a = EndianClass.buffer(3, [1, 2, 3])
+    b = EndianClass.dynamic(0x7f, [1])
+    c = EndianClass.empty()
+
+    monster = EndianClass(a, 0xcafebabe, 32, b, c, 0xff)
+
+    assert bytes(monster) == struct.pack(f'{format}I32sIBBBB', 3, b'\x01\x02\x03' + b'\x00', 0xcafebabe,
+                                         32, 0x7f, 1, 0xff)
