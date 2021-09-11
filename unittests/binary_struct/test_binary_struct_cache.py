@@ -12,8 +12,8 @@ def test_cache_hit_empty():
         def bar(self):
             return True
 
-    hash1 = BinaryStructHasher(uint8_t)
-    hash2 = BinaryStructHasher(uint8_t)
+    hash1 = BinaryStructHasher(Empty1)
+    hash2 = BinaryStructHasher(Empty2)
 
     assert hash(hash1) == hash(hash2)
     assert hash1 == hash2
@@ -56,7 +56,6 @@ def test_cache_miss_different_name():
     hash2 = BinaryStructHasher(StillSimpleClass)
 
     assert hash(hash1) != hash(hash2)
-    assert hash1 != hash2
 
 def test_cache_miss_simple():
     class SimpleClass:
@@ -69,7 +68,6 @@ def test_cache_miss_simple():
     hash2 = BinaryStructHasher(StillSimpleClass)
 
     assert hash(hash1) != hash(hash2)
-    assert hash1 != hash2
 
 def test_cache_hit_with_binary_buffer():
     class SizedBuffer:
@@ -99,7 +97,6 @@ def test_cache_miss_with_binary_buffer():
     hash2 = BinaryStructHasher(BufferWithSize)
 
     assert hash(hash1) != hash(hash2)
-    assert hash1 != hash2
 
 def test_cache_hit_with_typed_buffer():
     class DynamicBuffer:
@@ -129,7 +126,6 @@ def test_cache_miss_with_typed_buffer():
     hash2 = BinaryStructHasher(BufferDynamic)
 
     assert hash(hash1) != hash(hash2)
-    assert hash1 != hash2
 
 def test_cache_hit_with_same_inheritence():
     class A:
@@ -260,3 +256,28 @@ def test_cache_hit_endianness_base_classes_are_different():
 
     assert C.__bases__[0] is not A
     assert _process_class.cache_info().hits == 1
+
+def test_cache_hit_inheritence():
+    # cache miss 1
+    @binary_struct
+    class A:
+        a: uint32_t
+
+    # cache miss 2
+    B = big_endian(A)
+
+    # cache miss 3
+    @binary_struct
+    class C:
+        a: A
+        b: [A]
+        c: [A, 32]
+
+    # cache hit for each A, 3 hits, 1 miss for D
+    D = big_endian(C)
+    # 1 cache hit for C, and 3 for A
+    E = big_endian(C)
+
+    assert E is not D
+    assert _process_class.cache_info().misses == 4
+    assert _process_class.cache_info().hits == 7
