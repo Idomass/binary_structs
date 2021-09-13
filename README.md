@@ -158,7 +158,7 @@ class BinaryStruct(BinaryField):
         # More generated code
         pass
 
-    def deserialize(buf):
+    def deserialize(self, buf):
         # Even more generated code
         pass
 
@@ -230,11 +230,15 @@ But when converting a `@binary_struct`, an instance of the converted type can be
 
 
 ## WIP/TODO Features
-- [X] Caching support
-- [X] Test coverage for `little_endian`
-- [ ] More test cases for inheritence
-- [ ] Add `__str__` and `__repr__`
-- [ ] Add `+` operator between `binary_struct`
 - [ ] Full Deserialization support
-- [ ] A `@binary_union` decorator
+- [X] Test coverage for `little_endian`
+- [X] Caching support
+- [ ] More test cases for inheritence
+- [ ] Use sphinx docs
+- [ ] Add `+` operator between `binary_struct`
+- [ ] Add default values
+- [ ] Add control over individual fields
 - [ ] Bitwise operations
+- [ ] Add support for factory classes
+- [ ] Add `__str__` and `__repr__`
+- [ ] A `@binary_union` decorator

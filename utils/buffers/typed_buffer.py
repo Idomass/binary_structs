@@ -8,7 +8,7 @@ the buffer
 from utils.binary_field import BinaryField
 
 
-class TypedBuffer(list):
+class TypedBuffer(list, BinaryField):
     """
     TypedBuffer, is a list the enforces type of its elements
     """
@@ -39,12 +39,27 @@ class TypedBuffer(list):
         except [ValueError, TypeError]:
             raise TypeError(f'Trying to add an element of {type(element)} to buffer of {self._underlying_type}\'s')
 
-    def __setitem__(self, index_or_slice, element) -> None:
-        if isinstance(index_or_slice, slice):
-            return super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])
+    def deserialize(self, buf: bytes, size: int = -1):
+        """
+        Deserialize a typed buffer from a bytes object
+        A size parameter can be passed in order to limit the amount
+        of new items that will be created
 
-        else:
-            return super().__setitem__(index_or_slice, self._build_new_element(element))
+        NOTE: this will destroy the old buffer
+        """
+
+        self.clear()
+        underlying_size = self._underlying_type().size_in_bytes
+
+        while buf != b'' and size != 0:
+            new_element = self._underlying_type()
+            new_element.deserialize(buf[:underlying_size])
+            self.append(new_element)
+
+            size -= 1
+            buf = buf[underlying_size:]
+
+        return self
 
     def append(self, element) -> None:
         return super().append(self._build_new_element(element))
@@ -54,6 +69,13 @@ class TypedBuffer(list):
 
     def insert(self, index, element) -> None:
         return super().insert(index, self._build_new_element(element))
+
+    def __setitem__(self, index_or_slice, element) -> None:
+        if isinstance(index_or_slice, slice):
+            return super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])
+
+        else:
+            return super().__setitem__(index_or_slice, self._build_new_element(element))
 
     def __iadd__(self, iterable):
         return super().__iadd__([self._build_new_element(element) for element in iterable])

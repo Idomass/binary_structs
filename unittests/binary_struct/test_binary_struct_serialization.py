@@ -1,6 +1,8 @@
 import struct
+import pytest
 
 
+# Serialization
 def test_valid_serialization(BufferClass):
     a = BufferClass(20, [0x41] * 20)
 
@@ -58,3 +60,38 @@ def test_valid_class_init_with_monster_class_serialization(MonsterClass, Dynamic
     assert bytes(monster) == struct.pack('I32s', 3, b'\x01\x02\x03' + b'\x00') + \
                              struct.pack('I', 0xcafebabe) + \
                              struct.pack('BBBB', 32, 0x7f, 1, 0xff)
+
+# Deserialization
+def test_valid_deserialization_empty(EmptyClass):
+    a = EmptyClass().deserialize(b'')
+
+    assert isinstance(a, EmptyClass)
+
+def test_valid_deserialization_simple(SimpleClass):
+    a = SimpleClass().deserialize(b'\xff')
+
+    assert a.a.value == 0xff
+
+def test_valid_deserialization_buffer_too_small(SimpleClass):
+    with pytest.raises(ValueError):
+        SimpleClass().deserialize(b'')
+
+def test_valid_deserialization_buffer(BufferClass):
+    a = BufferClass().deserialize(struct.pack('I32s', 20, b'A' * 32))
+
+    assert a.size == 20
+    for element in a.buf:
+        assert element.value == 0x41
+
+def test_invalid_deserialization_buffer_too_small(BufferClass):
+    with pytest.raises(ValueError):
+        BufferClass().deserialize(struct.pack('I31s', 20, b'A' * 31))
+
+def test_valid_deserialization_dynamic_class(DynamicClass):
+    a = DynamicClass().deserialize(struct.pack('B50s', 10, b'a' * 50))
+
+    assert a.size_in_bytes == 51
+    assert a.buf.size_in_bytes == 50
+    assert a.magic.value == 10
+    for element in a.buf:
+        assert element.value == 97

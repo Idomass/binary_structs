@@ -37,6 +37,28 @@ class BinaryBuffer(TypedBuffer):
         for index in range(len(self), self._size):
             super().insert(index, self._underlying_type())
 
+    def deserialize(self, buf: bytes):
+
+        underlying_size = self._underlying_type().size_in_bytes
+
+        for index in range(len(self)):
+            new_element = self._underlying_type()
+            new_element.deserialize(buf[:underlying_size])
+            self.__setitem__(index, new_element)
+
+            buf = buf[underlying_size:]
+
+        return self
+
+    def clear(self) -> None:
+        super().clear()
+        # Fill with empty instances
+        for index in range(len(self), self._size):
+            super().insert(index, self._underlying_type())
+
+    def remove(self, value) -> None:
+        raise ValueError('Cannot remove items from a fixed size list!')
+
     def insert(self, index, element) -> None:
         raise MaxSizeExceededError('Can\'t insert to an already full buffer')
 

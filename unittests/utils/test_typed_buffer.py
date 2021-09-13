@@ -1,6 +1,6 @@
 import pytest
 
-from utils.binary_field import uint8_t
+from utils.binary_field import uint32_t, uint8_t
 from utils.buffers.typed_buffer import TypedBuffer
 
 
@@ -161,3 +161,31 @@ def test_valid_size_empty():
     a = TypedBuffer(uint8_t)
 
     assert a.size_in_bytes == 0
+
+def test_valid_deserialization_empty(typed_buffer):
+    typed_buffer.deserialize(b'')
+
+    assert typed_buffer.size_in_bytes == 0
+
+def test_valid_deserialization_non_empty(typed_buffer):
+    typed_buffer.deserialize(b'\xde\xad')
+
+    assert typed_buffer.size_in_bytes == 2
+    assert typed_buffer[0] == 0xde
+    assert typed_buffer[1] == 0xad
+
+def test_invalid_deserialization_buffer_to_small():
+    with pytest.raises(ValueError):
+        TypedBuffer(uint32_t).deserialize(b'\xde\xad\xbe\xef\xff')
+
+def test_valid_deserialization_size(typed_buffer):
+    typed_buffer.deserialize(b'\xff' * 10, size=3)
+
+    assert typed_buffer.size_in_bytes == 3
+    for element in typed_buffer:
+        assert element.value == 0xff
+
+def test_valid_deserialzation_empty_size(typed_buffer):
+    typed_buffer.deserialize(b'\xff' * 15, size=0)
+
+    assert typed_buffer.size_in_bytes == 0

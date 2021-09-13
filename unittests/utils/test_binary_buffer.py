@@ -80,3 +80,38 @@ def test_valid_size_empty():
     a = BinaryBuffer(uint8_t, 0)
 
     assert a.size_in_bytes == 0
+
+def test_valid_clear():
+    a = BinaryBuffer(uint8_t, 10, [0x41] * 10)
+
+    a.clear()
+    assert a.size_in_bytes == 10
+    for element in a:
+        assert element.value == 0
+
+def test_invalid_remove():
+    with pytest.raises(ValueError):
+        BinaryBuffer(uint8_t, 10, [0x41] * 10).remove(0x41)
+
+def test_valid_deserialization_empty():
+    a = BinaryBuffer(uint8_t, 0).deserialize(b'')
+
+    assert a.size_in_bytes == 0
+
+def test_valid_deserialization_non_empty():
+    a = BinaryBuffer(uint8_t, 4).deserialize(b'\xff' * 4)
+
+    assert a.size_in_bytes == 4
+    for element in a:
+        assert element.value == 0xff
+
+def test_valid_deserialization_buffer_too_big():
+    a = BinaryBuffer(uint8_t, 8).deserialize(b'\xde' * 10)
+
+    assert a.size_in_bytes == 8
+    for element in a:
+        assert element.value == 0xde
+
+def test_invalid_deserialization_buffer_too_small():
+    with pytest.raises(ValueError):
+        BinaryBuffer(uint8_t, 4).deserialize(b'\xff' * 2)
