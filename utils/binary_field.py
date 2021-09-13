@@ -34,6 +34,10 @@ class BinaryField:
     def __bytes__(self):
         pass
 
+    @abstractmethod
+    def __eq__(self, other):
+        pass
+
     @property
     @abstractmethod
     def size_in_bytes(self):
@@ -58,7 +62,11 @@ class PrimitiveTypeField(BinaryField):
         if isinstance(number, int):
             return self.value == number
 
-        return super().__eq__(number)
+        elif isinstance(number, PrimitiveTypeField):
+            return self.value == number.value
+
+        else:
+            super().__eq__(number)
 
     def __bytes__(self) -> bytes:
         return struct.pack(self.FORMAT, self.value)

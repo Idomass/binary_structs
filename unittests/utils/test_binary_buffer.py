@@ -7,11 +7,7 @@ from utils.buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
 def test_valid_init():
     a = BinaryBuffer(uint32_t, 50, list(range(3)))
 
-    for element, expected_element in zip(a, list(range(3))):
-        assert element.value == expected_element
-
-    for element in a[3:]:
-        assert element.value == 0
+    assert a == [0, 1, 2] + [0] * 47
 
 def test_invalid_init():
     with pytest.raises(MaxSizeExceededError):
@@ -86,8 +82,7 @@ def test_valid_clear():
 
     a.clear()
     assert a.size_in_bytes == 10
-    for element in a:
-        assert element.value == 0
+    assert a == [0] * 10
 
 def test_invalid_remove():
     with pytest.raises(ValueError):
@@ -102,15 +97,13 @@ def test_valid_deserialization_non_empty():
     a = BinaryBuffer(uint8_t, 4).deserialize(b'\xff' * 4)
 
     assert a.size_in_bytes == 4
-    for element in a:
-        assert element.value == 0xff
+    assert a == [0xff] * 4
 
 def test_valid_deserialization_buffer_too_big():
     a = BinaryBuffer(uint8_t, 8).deserialize(b'\xde' * 10)
 
     assert a.size_in_bytes == 8
-    for element in a:
-        assert element.value == 0xde
+    assert a == [0xde] * 8
 
 def test_invalid_deserialization_buffer_too_small():
     with pytest.raises(ValueError):
