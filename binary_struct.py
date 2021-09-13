@@ -102,12 +102,10 @@ def _get_annotation_type(annotation) -> AnnotationType:
     else:
         return AnnotationType.OTHER
 
-def _init_var(name: str, annotation, globals: dict) -> tuple[list[str], str]:
+def _init_var(name: str, annotation, globals: dict) -> list[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
-    Returns a tuple:
-        - python code that is required to init that variable.
-        - default value for the parameters
+    Returns the python code that is required to init that variable.
     """
 
     # Don't allow these type names
@@ -116,26 +114,27 @@ def _init_var(name: str, annotation, globals: dict) -> tuple[list[str], str]:
 
     logging.debug(f'Creating init var {name} with type {annotation}')
 
+
     # TODO match syntax asap
     annotation_type = _get_annotation_type(annotation)
     if annotation_type == AnnotationType.BINARY_BUFFER:
         annotation, size = annotation
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = _binary_buffer({type_name}, {size}, {name})']
-        default_value = f'{name} = []'
+        init_var = [f'self.{name} = _binary_buffer({type_name}, {size}, {name} or [])']
 
     elif annotation_type == AnnotationType.TYPED_BUFFER:
         annotation = annotation[0]
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = _typed_buffer({type_name}, {name})']
-        default_value = f'{name} = []'
+        init_var = [f'self.{name} = _typed_buffer({type_name}, {name} or [])']
 
     elif annotation_type == AnnotationType.OTHER:
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var =  [f'if isinstance({name}, {type_name}):']
+        init_var =  [f'if {name} is None:']
+        init_var += [f'    self.{name} = {type_name}()']
+        init_var += [f'elif isinstance({name}, {type_name}):']
         init_var += [f'    self.{name} = {name}']
         init_var += [f'else:']
         init_var += [f'    try:']
@@ -143,15 +142,13 @@ def _init_var(name: str, annotation, globals: dict) -> tuple[list[str], str]:
         init_var += [f'    except (TypeError, ValueError):']
         init_var += [f'        raise TypeError("Got invalid type for {name}")']
 
-        default_value = f'{name} = {type_name}()'
-
     # Make sure annotation implements BinaryField
     if not issubclass(annotation, BinaryField):
         raise TypeError('All fields must implement BinaryField!')
 
-    return init_var, default_value
+    return init_var, f'{name} = None'
 
-def _create_init_fn(attributes: dict, globals: dict, bases: list[tuple[str, type]]) -> str:
+def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Create init function and return it.
 
@@ -162,24 +159,24 @@ def _create_init_fn(attributes: dict, globals: dict, bases: list[tuple[str, type
     init_parameters = ['self']
 
     # Init parent classes if they are binary fields
-    for parent_name, parent_type in bases:
+    for parent in bases:
         # Add a default value and a super for each parent attribute
-        parent_annotations = _get_annotations_recursively(parent_type)
+        parent_annotations = _get_annotations_recursively(parent)
 
-        init_parameters += [_init_var(name, annotation, globals)[1] for name, annotation in parent_annotations.items()]
+        init_parameters += [f'{name} = None' for name in parent_annotations.keys()]
 
-        init_txt.append(f'super({parent_name}, self).__init__({", ".join(param for param in parent_annotations.keys())})')
+        init_txt.append(f'super({parent.__name__}, self).__init__({", ".join(param for param in parent_annotations.keys())})')
 
     # Init variables
     for name, annotation in attributes.items():
         init_var_code, default_value = _init_var(name, annotation, globals)
 
         init_txt.extend(init_var_code)
-        init_parameters.append(default_value)
+        init_parameters.append(f'{name} = None')
 
     return _create_fn('__init__', init_parameters, init_txt or ['pass'], globals)
 
-def _create_bytes_fn(attributes: dict, globals: dict, bases: list[tuple[str, type]]) -> str:
+def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Create bytes function and return it.
     The created function will call bytes() on every class member
@@ -187,8 +184,8 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: list[tuple[str, typ
 
     lines = ['buf = b""']
 
-    for parent_name, _ in bases:
-        lines += [f'buf += super({parent_name}, self).__bytes__()']
+    for parent in bases:
+        lines += [f'buf += super({parent.__name__}, self).__bytes__()']
 
     # For class attributes
     for attr in attributes.keys():
@@ -198,8 +195,21 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: list[tuple[str, typ
 
     return _create_fn('__bytes__', ['self'], lines, globals)
 
-def _create_deserialize_fn(attributes: dict, globals: dict) -> str:
+def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
+    """
+    Create a deserialize function for binary struct from a buffer
+    The function will first deserialize parent classes, then the class attributes
+    """
+
     lines = []
+
+    # For this class bases
+    for parent in bases:
+        lines.append(f'super({parent.__name__}, self).deserialize(buf)')
+        lines.append(f'buf = buf[super({parent.__name__}, self).size_in_bytes:]')
+
+
+    # For this class attributes
     for name, annotation in attributes.items():
         annotation_type = _get_annotation_type(annotation)
         if annotation_type == AnnotationType.TYPED_BUFFER:
@@ -212,7 +222,7 @@ def _create_deserialize_fn(attributes: dict, globals: dict) -> str:
 
     return _create_fn('deserialize', ['self, buf'], lines + ['return self'], globals)
 
-def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
+def _create_size_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Generates the size property and returns the function as a string
     Created function will search the size_in_bytes attribute of every derived class
@@ -221,8 +231,8 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
     lines = ['counter = 0']
 
     # Add bases
-    for parent_name, _ in bases:
-        lines += [f'counter += super({parent_name}, self).size_in_bytes']
+    for parent in bases:
+        lines += [f'counter += super({parent.__name__}, self).size_in_bytes']
 
     # Add class variables
     for attr in attributes.keys():
@@ -232,10 +242,9 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
 
     return _create_fn('size_in_bytes', ['self'], lines, globals, is_property=True)
 
-def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
+def _filter_valid_bases(cls, globals: dict) -> tuple[type]:
     """
-    Insert BinaryField class bases, each with name in the global scope,
-    and the type itself
+    Returns every valid BinaryStruct base in class.
     """
 
     bases_list = []
@@ -248,9 +257,10 @@ def _get_class_bases_list(cls, globals: dict) -> list[tuple[str, type]]:
             raise TypeError('Cannot decorate more then once!')
 
         logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
-        bases_list.append((_insert_type_to_globals(parent, globals), parent))
+        _insert_type_to_globals(parent, globals)
+        bases_list.append(parent)
 
-    return bases_list
+    return tuple(bases_list)
 
 def _set_annotations_as_attributes(cls):
     """
@@ -340,24 +350,23 @@ def _process_class(cls: BinaryStructHasher):
     annotations = cls.__dict__.get('__annotations__', {})
     logging.debug(f'Building {cls}: Found annotations: {annotations}')
 
-    # This will be used for creating the new class
-    cls_basenames_to_bases = _get_class_bases_list(cls, globals)
-    binary_struct_bases = tuple(base for _, base in cls_basenames_to_bases)
+    # These will be used for creating the new class
+    binary_struct_bases = _filter_valid_bases(cls, globals)
 
     # BinaryStruct Inherits from each BinaryStruct subclass of cls
     logging.debug(f'Proccessing {cls}: Using {binary_struct_bases or (BinaryField,)} as base class')
     BinaryStruct = type('BinaryStruct', binary_struct_bases or (BinaryField,), {})
 
-    init_fn = _create_init_fn(annotations, globals, cls_basenames_to_bases)
+    init_fn = _create_init_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, '__init__', init_fn)
 
-    bytes_fn = _create_bytes_fn(annotations, globals, cls_basenames_to_bases)
+    bytes_fn = _create_bytes_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, '__bytes__', bytes_fn)
 
-    deserialize_fn = _create_deserialize_fn(annotations, globals)
+    deserialize_fn = _create_deserialize_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, 'deserialize', deserialize_fn)
 
-    size_property = _create_size_fn(annotations, globals, cls_basenames_to_bases)
+    size_property = _create_size_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, 'size_in_bytes', size_property)
 
     # Since NewBinaryClass Inherits only from BinaryStructs', add
