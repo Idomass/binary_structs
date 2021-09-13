@@ -154,3 +154,26 @@ def test_valid_class_init_with_no_params(BufferClass):
     for element in a.buf:
         assert element.value == 0
     assert a.size_in_bytes == 36
+
+def test_valid_default_ctor_types_are_different():
+    @binary_struct
+    class A:
+        a: uint32_t
+        b: uint32_t
+
+    a = A()
+
+    assert a.a is not a.b
+
+def test_valid_default_ctor_instances_are_different():
+    @binary_struct
+    class A:
+        a: uint32_t
+        b: uint32_t
+
+    a = A()
+    b = A()
+
+    assert a.a is not b.b
+    assert a.a is not b.a
+    assert a.b is not b.b

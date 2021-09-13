@@ -70,3 +70,10 @@ def test_valid_serialization_empty(underlying_type, default_value, size, buf):
     a = underlying_type()
 
     assert bytes(a) == b'\x00' * a.size_in_bytes
+
+@pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
+def test_two_default_ctors_instances_are_different(underlying_type, default_value, size, buf):
+    a = underlying_type()
+    b = underlying_type()
+
+    assert a is not b
