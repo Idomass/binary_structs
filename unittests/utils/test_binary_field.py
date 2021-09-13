@@ -77,3 +77,12 @@ def test_two_default_ctors_instances_are_different(underlying_type, default_valu
     b = underlying_type()
 
     assert a is not b
+
+@pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
+def test_eq_operator(underlying_type, default_value, size, buf):
+    a = underlying_type(default_value)
+    b = underlying_type(default_value)
+
+    assert a == b
+    assert a == default_value
+    assert a != default_value + 1

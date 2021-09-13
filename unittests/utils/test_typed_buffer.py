@@ -17,8 +17,7 @@ def test_invalid_init():
 def test_valid_init_different_ctor():
     a = TypedBuffer(uint8_t, [97] * 50)
 
-    for element in a:
-        assert element.value == 97
+    assert a == [97] * 50
 
 def test_valid_append(typed_buffer):
     typed_buffer.append(uint8_t(50))
@@ -51,11 +50,8 @@ def test_item_assignment_valid_different_ctor(typed_buffer):
 def test_list_slicing_valid(typed_buffer):
     typed_buffer[:10] = [uint8_t(0)] * 10
 
-    for i in range(10):
-        assert typed_buffer[i].value == 0
-
-    for j in range(10):
-        assert typed_buffer[i + j + 1].value == 97
+    assert typed_buffer[:10] == [0] * 10
+    assert typed_buffer[10:] == [97] * 10
 
 def test_list_slicing_invalid(typed_buffer):
     with pytest.raises(TypeError):
@@ -64,11 +60,8 @@ def test_list_slicing_invalid(typed_buffer):
 def test_list_slicing_valid_different_ctor(typed_buffer):
     typed_buffer[:10] = [0] * 10
 
-    for i in range(10):
-        assert typed_buffer[i].value == 0
-
-    for j in range(10):
-        assert typed_buffer[i + j + 1].value == 97
+    assert typed_buffer[:10] == [0] * 10
+    assert typed_buffer[10:] == [97] * 10
 
 def test_valid_copy(typed_buffer):
     original_buffer = typed_buffer[:]
@@ -81,11 +74,8 @@ def test_valid_copy(typed_buffer):
 def test_valid_extend(typed_buffer):
     typed_buffer.extend([uint8_t(50)] * 5)
 
-    for i in range(20):
-        assert typed_buffer[i].value == 97
-
-    for j in range(5):
-        assert typed_buffer[i + 1 + j].value == 50
+    assert typed_buffer[:20] == [97] * 20
+    assert typed_buffer[20:] == [50] * 5
 
 def test_invalid_extend(typed_buffer):
     with pytest.raises(TypeError):
@@ -94,20 +84,14 @@ def test_invalid_extend(typed_buffer):
 def test_valid_extend_different_ctor(typed_buffer):
     typed_buffer.extend([50] * 5)
 
-    for i in range(20):
-        assert typed_buffer[i].value == 97
-
-    for j in range(5):
-        assert typed_buffer[i + 1 + j].value == 50
+    assert typed_buffer[:20] == [97] * 20
+    assert typed_buffer[20:] == [50] * 5
 
 def test_valid_iadd(typed_buffer):
     typed_buffer += [uint8_t(50)] * 5
 
-    for i in range(20):
-        assert typed_buffer[i].value == 97
-
-    for j in range(5):
-        assert typed_buffer[i + 1 + j].value == 50
+    assert typed_buffer[:20] == [97] * 20
+    assert typed_buffer[20:] == [50] * 5
 
 def test_invalid_iadd(typed_buffer):
     with pytest.raises(TypeError):
@@ -116,22 +100,15 @@ def test_invalid_iadd(typed_buffer):
 def test_valid_iadd_different_ctor(typed_buffer):
     typed_buffer += [50] * 5
 
-    for i in range(20):
-        assert typed_buffer[i].value == 97
-
-    for j in range(5):
-        assert typed_buffer[i + 1 + j].value == 50
+    assert typed_buffer[:20] == [97] * 20
+    assert typed_buffer[20:] == [50] * 5
 
 def test_valid_insert(typed_buffer):
     typed_buffer.insert(10, uint8_t(0))
 
-    for i in range(10):
-        assert typed_buffer[i].value == 97
-
-    assert typed_buffer[i + 1].value == 0
-
-    for j in range(10):
-        assert typed_buffer[i + 1 + 2].value == 97
+    assert typed_buffer[:10] == [97] * 10
+    assert typed_buffer[10] == 0
+    assert typed_buffer[11:] == [97] * 10
 
 def test_invalid_insert(typed_buffer):
     with pytest.raises(TypeError):
@@ -140,13 +117,9 @@ def test_invalid_insert(typed_buffer):
 def test_valid_insert_different_ctor(typed_buffer):
     typed_buffer.insert(10, 0)
 
-    for i in range(10):
-        assert typed_buffer[i].value == 97
-
-    assert typed_buffer[i + 1].value == 0
-
-    for j in range(10):
-        assert typed_buffer[i + 1 + 2].value == 97
+    assert typed_buffer[:10] == [97] * 10
+    assert typed_buffer[10] == 0
+    assert typed_buffer[11:] == [97] * 10
 
 def test_valid_serialization_empty():
     assert bytes(TypedBuffer(uint8_t)) == b''
@@ -182,8 +155,7 @@ def test_valid_deserialization_size(typed_buffer):
     typed_buffer.deserialize(b'\xff' * 10, size=3)
 
     assert typed_buffer.size_in_bytes == 3
-    for element in typed_buffer:
-        assert element.value == 0xff
+    assert typed_buffer == [0xff] * 3
 
 def test_valid_deserialzation_empty_size(typed_buffer):
     typed_buffer.deserialize(b'\xff' * 15, size=0)

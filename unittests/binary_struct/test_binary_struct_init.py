@@ -81,24 +81,13 @@ def test_valid_nested_class(BufferClass, NestedClass):
     b = NestedClass(a, 0xdeadbeef)
 
     assert isinstance(b.buffer, BufferClass)
-    assert b.buffer == a
+    assert b.buffer is a
 
 def test_valid_class_duplicate_members(DuplicateClass):
     a = DuplicateClass(0xff)
 
     assert isinstance(a.magic, uint32_t)
     assert a.magic.value == 0xff
-
-# TODO
-@pytest.mark.skip(reason='Cant figure a way to pass it for now')
-def test_valid_class_copy_ctor(BufferClass):
-    a = BufferClass(5, range(5))
-    b = deepcopy(a)
-
-    b.size.value = 10
-
-    assert a.size.value == 5
-    assert b.size.value == 10
 
 def test_valid_class_dynamic_buffer(DynamicClass):
     a = DynamicClass(5, [97] * 50)
@@ -122,18 +111,6 @@ def test_valid_class_custom_init_implementation():
     a = A(5)
 
     assert a.times_two.value == 10
-
-def test_valid_class_size(BufferClass, NestedClass):
-    a = BufferClass(32, [97] * 32)
-    b = NestedClass(a, 0xdeadbeef)
-
-    assert a.size_in_bytes == 36
-    assert b.size_in_bytes == 40
-
-def test_valid_class_size_empty(EmptyClass):
-    a = EmptyClass()
-
-    assert a.size_in_bytes == 0
 
 def test_valid_class_with_size_in_bytes_attribute():
     with pytest.raises(AttributeError):

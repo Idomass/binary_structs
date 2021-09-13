@@ -96,4 +96,4 @@ def test_valid_class_init_with_kwargs(MonsterClass, DynamicClass):
     b = MonsterClass(dynamic=dynamic)
 
     assert a.magic2 == 90
-    assert b.dynamic == dynamic
+    assert b.dynamic is dynamic
