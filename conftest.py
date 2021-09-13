@@ -1,6 +1,5 @@
 import pytest
 
-from endianness import big_endian
 from utils.buffers.typed_buffer import TypedBuffer
 from utils.binary_field import uint8_t, uint32_t
 from binary_struct import binary_struct, _process_class

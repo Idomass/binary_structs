@@ -198,6 +198,20 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: list[tuple[str, typ
 
     return _create_fn('__bytes__', ['self'], lines, globals)
 
+def _create_deserialize_fn(attributes: dict, globals: dict) -> str:
+    lines = []
+    for name, annotation in attributes.items():
+        annotation_type = _get_annotation_type(annotation)
+        if annotation_type == AnnotationType.TYPED_BUFFER:
+            lines.append(f'self.{name}.deserialize(buf)')
+
+        else:
+            lines.append(f'self.{name}.deserialize(buf[:self.{name}.size_in_bytes])')
+
+        lines.append(f'buf = buf[self.{name}.size_in_bytes:]')
+
+    return _create_fn('deserialize', ['self, buf'], lines + ['return self'], globals)
+
 def _create_size_fn(attributes: dict, globals: dict, bases: tuple = ()) -> str:
     """
     Generates the size property and returns the function as a string
@@ -339,6 +353,9 @@ def _process_class(cls: BinaryStructHasher):
 
     bytes_fn = _create_bytes_fn(annotations, globals, cls_basenames_to_bases)
     setattr(BinaryStruct, '__bytes__', bytes_fn)
+
+    deserialize_fn = _create_deserialize_fn(annotations, globals)
+    setattr(BinaryStruct, 'deserialize', deserialize_fn)
 
     size_property = _create_size_fn(annotations, globals, cls_basenames_to_bases)
     setattr(BinaryStruct, 'size_in_bytes', size_property)
