@@ -21,8 +21,8 @@ def test_valid_class_custom_fn_implementation_multiple_inheritence():
     assert a.foo()
     assert a.bar()
 
-def test_valid_class_init_with_inheritence(InheritedClass):
-    a = InheritedClass(32, [97] * 32, 0xff)
+def test_valid_class_init_with_inheritence(InheritedClassFixture):
+    a = InheritedClassFixture(32, [97] * 32, 0xff)
 
     assert a.size == 32
     for element in a.buf:
@@ -30,8 +30,8 @@ def test_valid_class_init_with_inheritence(InheritedClass):
     assert a.magic == 0xff
     assert a.size_in_bytes == 40
 
-def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClass):
-    a = MultipleInheritedClass(32, [97] * 32, 5, 0xff)
+def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClassFixture):
+    a = MultipleInheritedClassFixture(32, [97] * 32, 5, 0xff)
 
     assert a.size == 32
     for element in a.buf:
@@ -41,9 +41,9 @@ def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClass):
     assert a.foo()
     assert a.size_in_bytes == 41
 
-def test_valid_class_with_multiple_inheritence_decorated_for_each(BufferClass):
+def test_valid_class_with_multiple_inheritence_decorated_for_each(BufferClassFixture):
     @binary_struct
-    class A(BufferClass):
+    class A(BufferClassFixture):
         magic: uint8_t
 
     @binary_struct
@@ -62,16 +62,16 @@ def test_valid_class_with_multiple_inheritence_decorated_for_each(BufferClass):
     assert a.magic.value == 3
     assert a.size_in_bytes == 37
 
-def test_invalid_class_inherited_name_conflict(BufferClass, DynamicClass):
+def test_invalid_class_inherited_name_conflict(BufferClassFixture, DynamicClassFixture):
     with pytest.raises(SyntaxError):
         @binary_struct
-        class A(BufferClass, DynamicClass):
+        class A(BufferClassFixture, DynamicClassFixture):
             pass
 
-def test_valid_class_nested_and_inherited(InheritedAndNestedClass, BufferClass):
-    a = BufferClass(32, [97] * 32)
-    b = BufferClass(16, [0x41] * 16)
-    c = InheritedAndNestedClass(a, 0xdeadbeef, b)
+def test_valid_class_nested_and_inherited(InheritedAndNestedClassFixture, BufferClassFixture):
+    a = BufferClassFixture(32, [97] * 32)
+    b = BufferClassFixture(16, [0x41] * 16)
+    c = InheritedAndNestedClassFixture(a, 0xdeadbeef, b)
 
     assert c.magic.value == 0xdeadbeef
     assert c.buffer.size == 32
@@ -80,20 +80,20 @@ def test_valid_class_nested_and_inherited(InheritedAndNestedClass, BufferClass):
     assert c.buf2.size == 16
     assert c.buf2.buf == b.buf
 
-def test_valid_class_init_with_monster_class(MonsterClass, DynamicClass, BufferClass, EmptyClass):
-    a = BufferClass(3, [1, 2, 3])
-    b = DynamicClass(0xdeadbeef, [1])
-    c = EmptyClass()
+def test_valid_class_init_with_monster_class(MonsterClassFixture, DynamicClassFixture, BufferClassFixture, EmptyClassFixture):
+    a = BufferClassFixture(3, [1, 2, 3])
+    b = DynamicClassFixture(0xdeadbeef, [1])
+    c = EmptyClassFixture()
 
-    monster = MonsterClass(a, 0xcafebabe, 32, b, c, 0xff)
+    monster = MonsterClassFixture(a, 0xcafebabe, 32, b, c, 0xff)
 
     assert monster.size_in_bytes == a.size_in_bytes + b.size_in_bytes + c.size_in_bytes \
                                     + 4 + 1 + 1
 
-def test_valid_class_init_with_kwargs(MonsterClass, DynamicClass):
-    dynamic = DynamicClass(5, [1, 2, 3])
-    a = MonsterClass(magic2=90)
-    b = MonsterClass(dynamic=dynamic)
+def test_valid_class_init_with_kwargs(MonsterClassFixture, DynamicClassFixture):
+    dynamic = DynamicClassFixture(5, [1, 2, 3])
+    a = MonsterClassFixture(magic2=90)
+    b = MonsterClassFixture(dynamic=dynamic)
 
     assert a.magic2 == 90
     assert b.dynamic is dynamic

@@ -195,6 +195,28 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
 
     return _create_fn('__bytes__', ['self'], lines, globals)
 
+def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
+    """
+    Create and __eq__ function for a BinaryStruct and return it as a string.
+    This function will compare all fields that were declared in the annotations.
+    """
+
+    lines = [
+        'if not isinstance(other, type(self)):',
+        '    return False'
+    ]
+
+    for base in bases:
+        lines.append(f'if not super({base.__name__}, self).__eq__(other):')
+        lines.append(f'    return False')
+
+    for name in attributes.keys():
+        lines.append(f'if self.{name} != other.{name}:')
+        lines.append(f'    return False')
+    lines.append('return True')
+
+    return _create_fn('__eq__', ['self, other'], lines, globals)
+
 def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Create a deserialize function for binary struct from a buffer
@@ -362,6 +384,9 @@ def _process_class(cls: BinaryStructHasher):
 
     bytes_fn = _create_bytes_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, '__bytes__', bytes_fn)
+
+    eq_fn = _create_equal_fn(annotations, globals, binary_struct_bases)
+    setattr(BinaryStruct, '__eq__', eq_fn)
 
     deserialize_fn = _create_deserialize_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, 'deserialize', deserialize_fn)
