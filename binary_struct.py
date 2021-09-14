@@ -102,6 +102,32 @@ def _get_annotation_type(annotation) -> AnnotationType:
     else:
         return AnnotationType.OTHER
 
+def _init_binary_field(self: type, field_name: str, field_type: BinaryField, field_value):
+    """
+    Helper function for initializing BinaryFields in a BinaryStruct
+    Initialization process is described below
+    """
+
+    # Default value initialization
+    if field_value is None:
+        setattr(self, field_name, field_type())
+
+    # Check if the correct type was passed
+    elif isinstance(field_value, field_type):
+        setattr(self, field_name, field_value)
+
+    # Check for nested args initialization
+    elif isinstance(field_value, list):
+        setattr(self, field_name, field_type(*field_value))
+
+    # Check for nested kwargs initialization
+    elif isinstance(field_value, dict):
+        setattr(self, field_name, field_type(**field_value))
+
+    # Try to init with convertable value
+    else:
+        setattr(self, field_name, field_type(field_value))
+
 def _init_var(name: str, annotation, globals: dict) -> list[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
@@ -132,15 +158,7 @@ def _init_var(name: str, annotation, globals: dict) -> list[str]:
     elif annotation_type == AnnotationType.OTHER:
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var =  [f'if {name} is None:']
-        init_var += [f'    self.{name} = {type_name}()']
-        init_var += [f'elif isinstance({name}, {type_name}):']
-        init_var += [f'    self.{name} = {name}']
-        init_var += [f'else:']
-        init_var += [f'    try:']
-        init_var += [f'        self.{name} = {type_name}({name})']
-        init_var += [f'    except (TypeError, ValueError):']
-        init_var += [f'        raise TypeError("Got invalid type for {name}")']
+        init_var = [f'self._init_binary_field("{name}", {type_name}, {name})']
 
     # Make sure annotation implements BinaryField
     if not issubclass(annotation, BinaryField):
@@ -379,7 +397,9 @@ def _process_class(cls: BinaryStructHasher):
     logging.debug(f'Proccessing {cls}: Using {binary_struct_bases or (BinaryField,)} as base class')
     BinaryStruct = type('BinaryStruct', binary_struct_bases or (BinaryField,), {})
 
+
     init_fn = _create_init_fn(annotations, globals, binary_struct_bases)
+    setattr(BinaryStruct, '_init_binary_field', _init_binary_field)
     setattr(BinaryStruct, '__init__', init_fn)
 
     bytes_fn = _create_bytes_fn(annotations, globals, binary_struct_bases)

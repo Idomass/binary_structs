@@ -234,7 +234,7 @@ But when converting a `@binary_struct`, an instance of the converted type can be
 - [X] Test coverage for `little_endian`
 - [X] Caching support
 - [ ] More test cases for inheritence
-- [ ] Add `__eq__` operator
+- [X] Add `__eq__` operator
 - [ ] Use sphinx docs
 - [ ] Add `+` operator between `binary_struct`
 - [ ] Add default values
