@@ -28,7 +28,9 @@ structs_formats = [
     # MultipleInheritedClass
     ['I32sBI', [99, bytes(range(15)) + b'\x00' * 17, 7, 0x90807060]],
     # NestedClass
-    ['I32sI', [5, b'\x01' + b'\x00' * 31, 0xdeadbeef]]
+    ['I32sI', [5, b'\x01' + b'\x00' * 31, 0xdeadbeef]],
+    # MultipleNestedClass
+    ['I32sII', [5, b'\x01' + b'\x00' * 31, 0xdeadbeef, 0xcafebabe]]
 ]
 
 # Make the new test_params

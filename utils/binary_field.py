@@ -12,10 +12,19 @@ and this file adds the classic primitive types that
 implement BinaryField interface
 """
 
+import sys
 import struct
 import ctypes
 
+from enum import Enum
 from abc import abstractmethod
+
+
+class Endianness(Enum):
+    NONE = ''
+    BIG = 'be'
+    LITTLE = 'le'
+    HOST = LITTLE if sys.byteorder == 'little' else BIG
 
 
 class BinaryField:
@@ -31,11 +40,15 @@ class BinaryField:
         pass
 
     @abstractmethod
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
         pass
 
     @abstractmethod
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
+        pass
+
+    @abstractmethod
+    def __str__(self) -> str:
         pass
 
     @property
@@ -67,6 +80,13 @@ class PrimitiveTypeField(BinaryField):
 
         else:
             super().__eq__(number)
+
+    @abstractmethod
+    def __str__(self) -> str:
+        endianness = "be" if ">" in self.FORMAT else Endianness.HOST.value
+        sign = "u" if self.FORMAT.isupper() else 'i'
+
+        return f'{endianness}_{sign}{self.size_in_bytes * 8}(0x{self.value:02X})'
 
     def __bytes__(self) -> bytes:
         return struct.pack(self.FORMAT, self.value)

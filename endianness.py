@@ -3,22 +3,13 @@ This file exports the big_endian and little_endian decorators,
 They are used to convert a BinaryStruct endiannes
 """
 
-import sys
 import logging
-
-from enum import Enum
 
 from utils.binary_field import *
 from binary_struct import binary_struct, _copy_cls
 
 
 # Endianness
-class Endianness(Enum):
-    NONE = ''
-    BIG = 'BE'
-    LITTLE = 'LE'
-    HOST = LITTLE if sys.byteorder == 'little' else BIG
-
 def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
     """
     Convert PrimitiveTypeFields to the given endianness.

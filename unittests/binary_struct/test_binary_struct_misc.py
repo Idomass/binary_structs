@@ -85,3 +85,9 @@ def test_invalid_equal_different_structs(InheritedClassFixture):
     b = InheritedClassFixture(3, [0] * 9, 0xdead)
 
     assert a != b
+
+# __str__ tests
+@pytest.mark.parametrize('cls, params', test_structs)
+def test_string_conversion(cls, params):
+    print()
+    print(cls(**params))

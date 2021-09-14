@@ -80,6 +80,9 @@ class TypedBuffer(list, BinaryField):
     def __iadd__(self, iterable):
         return super().__iadd__([self._build_new_element(element) for element in iterable])
 
+    def __str__(self) -> str:
+        return f'[{", ".join(str(element) for element in self)}]'
+
     def __bytes__(self) -> bytes:
         return b''.join(bytes(element) for element in self)
 
