@@ -2,13 +2,8 @@ import struct
 import pytest
 
 from endianness import big_endian, little_endian
-from conftest import EmptyClass, SimpleClass, BufferClass, NestedClass, \
-                     DuplicateClass, DynamicClass, InheritedClass, \
-                     MultipleInheritedClass
+from conftest import EmptyClass, empty_decorator, test_structs
 
-
-def empty_decorator(cls):
-    return cls
 
 available_decorators = [
     [empty_decorator, '='],
@@ -16,57 +11,31 @@ available_decorators = [
     [little_endian, '<']
 ]
 
-# List of BinaryStruct, parameters for the init,
-# struct.pack format, and fitting arguements
-available_structs = [
-    [
-        EmptyClass,
-        {},
-        '', []
-    ],
-    [
-        SimpleClass,
-        {'a': 89},
-        'B', [89]
-    ],
-    [
-        BufferClass,
-        {'size': 423652, 'buf': range(3)},
-        'I32s', [423652, bytes(range(3)) + b'\x00' * 29]
-    ],
-    [
-        DuplicateClass,
-        {'magic': 0xcafebabe},
-        'I', [0xcafebabe]
-    ],
-    [
-        DynamicClass,
-        {'magic': 0xef, 'buf': range(99)},
-        'B99s', [0xef, bytes(range(99))]
-    ],
-    [
-        InheritedClass,
-        {'size': 50, 'buf': range(9), 'magic': 0x12345678},
-        'I32sI', [50, bytes(range(9)) + b'\x00' * 23, 0x12345678]
-    ],
-    [
-        MultipleInheritedClass,
-        {'size': 99, 'buf': range(15), 'a': 7 ,'magic': 0x90807060},
-        'I32sBI', [99, bytes(range(15)) + b'\x00' * 17, 7, 0x90807060]
-    ],
-
-    [
-        NestedClass,
-        {'buffer': [5, [1]], 'magic': 0xdeadbeef},
-        'I32sI', [5, b'\x01' + b'\x00' * 31, 0xdeadbeef]
-    ]
+# List of struct.pack format, and fitting arguements for the test_structs list
+structs_formats = [
+    # EmptyClass,
+    ['', []],
+    # SimpleClass,
+    ['B', [89]],
+    # BufferClass
+    ['I32s', [423652, bytes(range(3)) + b'\x00' * 29]],
+    # DuplicateClass
+    ['I', [0xcafebabe]],
+    # DynamicClass
+    ['B99s', [0xef, bytes(range(99))]],
+    # InheritedClass
+    ['I32sI', [50, bytes(range(9)) + b'\x00' * 23, 0x12345678]],
+    # MultipleInheritedClass
+    ['I32sBI', [99, bytes(range(15)) + b'\x00' * 17, 7, 0x90807060]],
+    # NestedClass
+    ['I32sI', [5, b'\x01' + b'\x00' * 31, 0xdeadbeef]]
 ]
 
 # Make the new test_params
 test_params = []
-for cls_params in available_structs:
+for index, cls_params in enumerate(test_structs):
     for decorator_params in available_decorators:
-        test_params.append(tuple(decorator_params + cls_params))
+        test_params.append(tuple(decorator_params + cls_params + structs_formats[index]))
 
 @pytest.mark.parametrize('decorator, endianness, cls, cls_params, struct_format, struct_params', test_params)
 def test_serialization(decorator, endianness, cls, cls_params, struct_format, struct_params):

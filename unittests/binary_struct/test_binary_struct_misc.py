@@ -1,9 +1,11 @@
 import pytest
 
 from copy import deepcopy
+from conftest import EmptyClass, empty_decorator, test_structs
 
 from utils.binary_field import uint8_t
 from binary_struct import binary_struct
+from endianness import big_endian, little_endian
 
 
 # TODO
@@ -37,7 +39,33 @@ def test_valid_size_dynamic(DynamicClassFixture):
     a.buf.append(90)
     assert a.size_in_bytes == 5
 
-# Equal operator
+# Equal tests
+available_decorators = [empty_decorator, big_endian, little_endian]
+
+test_params = []
+for cls_params in test_structs:
+    for decorator in available_decorators:
+        test_params.append(tuple([decorator] + cls_params))
+
+
+@pytest.mark.parametrize('decorator, cls, params', test_params)
+def test_equal(decorator, cls, params):
+    new_cls = decorator(cls)
+    instance1 = new_cls(**params)
+    instance2 = new_cls(**params)
+
+    assert instance1 == instance2
+
+@pytest.mark.parametrize('decorator, cls, params', test_params)
+def test_inequal(decorator, cls, params):
+    # Doesn't apply to empty class
+    if cls is not EmptyClass:
+        new_cls = decorator(cls)
+        instance1 = new_cls(**params)
+        instance2 = new_cls()
+
+        assert instance1 != instance2
+
 def test_invalid_equal_not_binary_struct(SimpleClassFixture):
     class A:
         def __init__(self):
@@ -48,78 +76,6 @@ def test_invalid_equal_not_binary_struct(SimpleClassFixture):
 
     assert b != a
 
-def test_valid_equal_simple(SimpleClassFixture):
-    a = SimpleClassFixture(5)
-    b = SimpleClassFixture(5)
-
-    assert a == b
-
-def test_invalid_equal_simple(SimpleClassFixture):
-    a = SimpleClassFixture(5)
-    b = SimpleClassFixture(7)
-
-    assert a != b
-
-def test_valid_equal_buffer(BufferClassFixture):
-    a = BufferClassFixture(5, [1, 2, 3])
-    b = BufferClassFixture(5, [1, 2, 3])
-
-    assert a == b
-
-def test_invalid_equal_buffer(BufferClassFixture):
-    a = BufferClassFixture(5, [1, 2, 3])
-    b = BufferClassFixture(9, [1, 2, 3])
-
-    assert a != b
-
-def test_valid_equal_dynamic(DynamicClassFixture):
-    a = DynamicClassFixture(94, range(90))
-    b = DynamicClassFixture(94, range(90))
-
-    assert a == b
-
-def test_invalid_equal_dynamic(DynamicClassFixture):
-    a = DynamicClassFixture(94, range(90))
-    b = DynamicClassFixture(94, range(89))
-
-    assert a != b
-
-def test_valid_equal_inheritence(InheritedClassFixture):
-    a = InheritedClassFixture(3, [0] * 9, 0xdead)
-    b = InheritedClassFixture(3, [0] * 9, 0xdead)
-
-    assert a == b
-
-def test_invalid_equal_inheritence(InheritedClassFixture):
-    a = InheritedClassFixture(3, [0] * 9, 0xdead)
-    b = InheritedClassFixture(3, [1] * 9, 0xdead)
-
-    assert a != b
-
-def test_valid_equal_nested(NestedClassFixture):
-    a = NestedClassFixture(NestedClassFixture.buffer(1, [0]), 0xcafebabe)
-    b = NestedClassFixture(NestedClassFixture.buffer(1, [0]), 0xcafebabe)
-
-    assert a == b
-
-def test_invalid_equal_nested(NestedClassFixture):
-    a = NestedClassFixture(NestedClassFixture.buffer(1, [0]), 0xcafebabe)
-    b = NestedClassFixture(NestedClassFixture.buffer(1, [1]), 0xcafebabe)
-
-    assert a != b
-
-def test_valid_equal_multiple_inheritence(MultipleInheritedClassFixture):
-    a = MultipleInheritedClassFixture(9, range(3), 0x70, 0xbeef)
-    b = MultipleInheritedClassFixture(9, range(3), 0x70, 0xbeef)
-
-    assert a == b
-
-def test_valid_equal_multiple_inheritence(MultipleInheritedClassFixture):
-    a = MultipleInheritedClassFixture(9, range(3), 0x70, 0xbeef)
-    b = MultipleInheritedClassFixture(9, range(3), 0x69, 0xbeef)
-
-    assert a != b
-
 def test_invalid_equal_different_structs(InheritedClassFixture):
     @binary_struct
     class A(InheritedClassFixture):
@@ -129,5 +85,3 @@ def test_invalid_equal_different_structs(InheritedClassFixture):
     b = InheritedClassFixture(3, [0] * 9, 0xdead)
 
     assert a != b
-
-# TODO, test with endianness
