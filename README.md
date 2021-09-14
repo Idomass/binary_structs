@@ -80,6 +80,12 @@ buf = BufferWithSize(size=5)
 magical_buf = MagicalBufferWithSize(magic=0xdeadbeef, data=buf)
 ```
 
+We can also use `args`/`kwargs` initialization for nested class, for even more control
+```python
+magical_buf1 = MagicalBufferWithSize(magic=0xdeadbeef, data=[5, range(5)])
+magical_buf2 = MagicalBufferWithSize(magic=0xdeadbeef, data={'buf': range(2)})
+```
+
 ### `@big_endian` and `@little_endian`
 We can change the endianness of our `BufferWithSize` easily, using the `@big_endian`/`@little_endian` decorator.
 Of course we can do that to the Nested version and the Inherited version.
@@ -114,6 +120,7 @@ Both `magic` and `data` will be converted to Big endian versions in this example
 ### Custom implementations
 We can always add a custom implementation to override the auto-implementation:
 ```python
+@binary_struct
 class BufferWithSize:
     size: uint32_t
     data: [uint8_t, 8]
@@ -188,8 +195,8 @@ the regular `super()`. This happens because when the code is first executed, the
 #### Suggested solution
 One suggested solution is re-building all the classes function, it might help fixing the super problem
 
-### Endianness conversion
-Endianness converstion introduced 2 main issues:
+### Endianness conversion [SOLVED!]
+Endianness converstion had 2 main issues:
 - A horrible amount of overhead was added:
 
     This happens because of the way `@binary_struct` decorator operates.
@@ -220,14 +227,19 @@ Endianness converstion introduced 2 main issues:
     NewBase = Nested.__annotations__['base'][0]
     ```
 
-#### Suggested solution
-For both of these problems, there is a suggested solution: A caching system that inserts converted types to the global namespace.
-If such system will be implemented, it will reduce overhead drastically, and it will be able to insert the converted nested-types into the global namespace.
+#### Applied solution
+As suggested, a caching system was added to handle the overhead, and performence skyrocketed since starting to use it.
 
-There are 3 types of endianness values available for each `BinaryField`: big, little, and none.
-When declaring a `@binary_struct`, it have no endianness by default and the passed fields will be used.
-But when converting a `@binary_struct`, an instance of the converted type can be inserted into some sort of cache, and it can be pulled from the cache if more conversions happen.
-
+The nested fields issue have now 2 elegant solutions:
+- Referencing using the `BinaryStruct`:
+    We can reference converted structs using the class:
+    ```python
+    a = Nested(Nested.base(5), 3)
+    ```
+- Using the `args`/`kwargs` initialization
+    ```python3
+    a = Nested(base=[5], 3)
+    ```
 
 ## WIP/TODO Features
 - [ ] Full Deserialization support
