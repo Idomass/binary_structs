@@ -249,9 +249,10 @@ The nested fields issue have now 2 elegant solutions:
 - [X] Add `__eq__` operator
 - [ ] Use sphinx docs
 - [ ] Add `+` operator between `binary_struct`
+- [ ] Add `/` operator between `binary_struct` instances
 - [ ] Add default values
 - [ ] Add control over individual fields
 - [ ] Bitwise operations
 - [ ] Add support for factory classes
-- [ ] Add `__str__` and `__repr__`
+- [X] Add `__str__` and `__repr__`
 - [ ] A `@binary_union` decorator

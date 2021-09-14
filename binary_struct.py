@@ -235,6 +235,28 @@ def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
 
     return _create_fn('__eq__', ['self, other'], lines, globals)
 
+def _create_string_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
+    """
+    Create a function that converts the struct into a string, for visual purposes
+    """
+
+    lines = ['string = ""']
+
+    # Add bases
+    for parent in bases:
+        lines += [f'parent_str = "\\n    " + "\\n    ".join('
+                  f'line for line in super({parent.__name__}, self).__str__().split("\\n"))']
+        lines += [f'string += f"{parent.__name__}: {{parent_str}}\\n"']
+
+    # Add class variables
+    for attr in attributes.keys():
+        lines += [f'attr_str = "\\n    " + "\\n    ".join(line for line in str(self.{attr}).split("\\n"))']
+        lines += [f'string  += f"{attr}: {{attr_str}}\\n"']
+
+    lines += ['return string']
+
+    return _create_fn('__str__', ['self'], lines, globals)
+
 def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Create a deserialize function for binary struct from a buffer
@@ -397,7 +419,6 @@ def _process_class(cls: BinaryStructHasher):
     logging.debug(f'Proccessing {cls}: Using {binary_struct_bases or (BinaryField,)} as base class')
     BinaryStruct = type('BinaryStruct', binary_struct_bases or (BinaryField,), {})
 
-
     init_fn = _create_init_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, '_init_binary_field', _init_binary_field)
     setattr(BinaryStruct, '__init__', init_fn)
@@ -407,6 +428,9 @@ def _process_class(cls: BinaryStructHasher):
 
     eq_fn = _create_equal_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, '__eq__', eq_fn)
+
+    str_fn = _create_string_fn(annotations, globals, binary_struct_bases)
+    setattr(BinaryStruct, '__str__', str_fn)
 
     deserialize_fn = _create_deserialize_fn(annotations, globals, binary_struct_bases)
     setattr(BinaryStruct, 'deserialize', deserialize_fn)

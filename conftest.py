@@ -57,6 +57,11 @@ class InheritedClass(BufferClass):
 class MultipleInheritedClass(BufferClass, SimpleClass, SomeBaseClass):
     magic: uint32_t
 
+@binary_struct
+class MultipleNestedClass:
+    nested: NestedClass
+    magic: uint32_t
+
 # List for parameterize tests
 test_structs = [
     [
@@ -91,6 +96,10 @@ test_structs = [
     [
         NestedClass,
         {'buffer': [5, [1]], 'magic': 0xdeadbeef}
+    ],
+    [
+        MultipleNestedClass,
+        {'nested': {'buffer': [5, [1]], 'magic': 0xdeadbeef}, 'magic': 0xcafebabe}
     ]
 ]
 
