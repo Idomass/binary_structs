@@ -3,7 +3,7 @@ import struct
 
 from utils.binary_field import *
 from binary_struct import binary_struct
-from endianness import Endianness, big_endian, little_endian
+from endianness import big_endian, little_endian
 
 
 # Initialization testing

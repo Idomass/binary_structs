@@ -39,6 +39,8 @@ class DuplicateClass:
     magic: uint32_t
     magic: uint32_t
 
+# TODO: Dynamic classes that start with the buffer
+# Will cause problems
 @binary_struct
 class DynamicClass:
     magic: uint8_t
@@ -51,16 +53,6 @@ class InheritedClass(BufferClass):
 @binary_struct
 class MultipleInheritedClass(BufferClass, SimpleClass, SomeBaseClass):
     magic: uint32_t
-
-@binary_struct
-class InheritedAndNestedClass(NestedClass):
-    buf2: BufferClass
-
-@binary_struct
-class MonsterClass(NestedClass, SimpleClass):
-    dynamic: DynamicClass
-    empty: EmptyClass
-    magic2: uint8_t
 
 # Fixtures
 @pytest.fixture
@@ -95,14 +87,6 @@ def InheritedClassFixture():
 @pytest.fixture
 def MultipleInheritedClassFixture():
     return MultipleInheritedClass
-
-@pytest.fixture
-def InheritedAndNestedClassFixture():
-    return InheritedAndNestedClass
-
-@pytest.fixture
-def MonsterClassFixture():
-    return MonsterClass
 
 # Caching
 @pytest.fixture(autouse=True)

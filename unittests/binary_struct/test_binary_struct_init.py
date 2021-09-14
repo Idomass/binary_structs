@@ -153,3 +153,21 @@ def test_valid_default_ctor_instances_are_different():
     assert a.a is not b.b
     assert a.a is not b.a
     assert a.b is not b.b
+
+def test_valid_init_nested_args(NestedClassFixture, BufferClassFixture):
+    a = NestedClassFixture(buffer=[5, range(5)])
+
+    assert a.buffer == BufferClassFixture(5, range(5))
+
+def test_invalid_init_nested_args(NestedClassFixture):
+    with pytest.raises(TypeError):
+        NestedClassFixture(buffer=[5, range(5), 3])
+
+def test_valid_init_nested_kwargs(NestedClassFixture, BufferClassFixture):
+    a = NestedClassFixture(buffer={'buf': range(3)})
+
+    assert a.buffer == BufferClassFixture(0, range(3))
+
+def test_invalid_init_nested_kwargs(NestedClassFixture):
+    with pytest.raises(TypeError):
+        NestedClassFixture(buffer={'bruh': 19})
