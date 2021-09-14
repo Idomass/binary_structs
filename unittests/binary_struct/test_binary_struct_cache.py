@@ -1,4 +1,4 @@
-from endianness import big_endian, little_endian
+from endianness import big_endian
 from binary_struct import BinaryStructHasher, binary_struct, _process_class
 from utils.binary_field import be_uint8_t, int8_t, uint32_t, uint64_t, uint8_t
 
@@ -33,39 +33,39 @@ def test_cache_miss_primitive():
     assert hash1 != hash2
 
 def test_cache_hit_simple():
-    class SimpleClass:
+    class SimpleClassFixture:
         a: int8_t
 
-    class StillSimpleClass:
+    class StillSimpleClassFixture:
         a: int8_t
 
-    hash1 = BinaryStructHasher(SimpleClass)
-    hash2 = BinaryStructHasher(StillSimpleClass)
+    hash1 = BinaryStructHasher(SimpleClassFixture)
+    hash2 = BinaryStructHasher(StillSimpleClassFixture)
 
     assert hash(hash1) == hash(hash2)
     assert hash1 == hash2
 
 def test_cache_miss_different_name():
-    class SimpleClass:
+    class SimpleClassFixture:
         a: int8_t
 
-    class StillSimpleClass:
+    class StillSimpleClassFixture:
         data: int8_t
 
-    hash1 = BinaryStructHasher(SimpleClass)
-    hash2 = BinaryStructHasher(StillSimpleClass)
+    hash1 = BinaryStructHasher(SimpleClassFixture)
+    hash2 = BinaryStructHasher(StillSimpleClassFixture)
 
     assert hash(hash1) != hash(hash2)
 
 def test_cache_miss_simple():
-    class SimpleClass:
+    class SimpleClassFixture:
         a: int8_t
 
-    class StillSimpleClass:
+    class StillSimpleClassFixture:
         a: uint8_t
 
-    hash1 = BinaryStructHasher(SimpleClass)
-    hash2 = BinaryStructHasher(StillSimpleClass)
+    hash1 = BinaryStructHasher(SimpleClassFixture)
+    hash2 = BinaryStructHasher(StillSimpleClassFixture)
 
     assert hash(hash1) != hash(hash2)
 

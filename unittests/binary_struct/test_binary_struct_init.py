@@ -1,13 +1,12 @@
 import pytest
 
-from copy import deepcopy
 from binary_struct import binary_struct
 from utils.binary_field import uint32_t, uint8_t
 from utils.buffers.binary_buffer import MaxSizeExceededError
 
 
-def test_empty_class(EmptyClass):
-    EmptyClass()
+def test_empty_class(EmptyClassFixture):
+    EmptyClassFixture()
 
 def test_empty_class_paranthesses():
     @binary_struct()
@@ -16,14 +15,14 @@ def test_empty_class_paranthesses():
 
     A()
 
-def test_valid_simple_class(SimpleClass):
-    a = SimpleClass(5)
+def test_valid_simple_class(SimpleClassFixture):
+    a = SimpleClassFixture(5)
 
     assert a.a.value == 5
 
-def test_invalid_simple_class(SimpleClass):
+def test_invalid_simple_class(SimpleClassFixture):
     with pytest.raises(TypeError):
-        SimpleClass(10, 7)
+        SimpleClassFixture(10, 7)
 
 def test_invalid_decorated_twice():
     with pytest.raises(TypeError):
@@ -32,8 +31,8 @@ def test_invalid_decorated_twice():
         class A:
             a: uint8_t
 
-def test_valid_simple_class_assert_type(SimpleClass):
-    a = SimpleClass(5)
+def test_valid_simple_class_assert_type(SimpleClassFixture):
+    a = SimpleClassFixture(5)
 
     assert isinstance(a.a, uint8_t)
 
@@ -49,55 +48,55 @@ def test_valid_type_alias():
     assert isinstance(a.b, uint32_t)
     assert a.b.value == 255
 
-def test_invalid_wrong_values(BufferClass):
+def test_invalid_wrong_values(BufferClassFixture):
     with pytest.raises(TypeError):
-        BufferClass('Noder', 15)
+        BufferClassFixture('Noder', 15)
 
-def test_valid_buffer(BufferClass):
-    a = BufferClass(32, [97] * 32)
+def test_valid_buffer(BufferClassFixture):
+    a = BufferClassFixture(32, [97] * 32)
 
     for element in a.buf:
         assert element.value == 97
 
     assert isinstance(a.buf[0], uint8_t)
 
-def test_invalid_length_buffer(BufferClass):
+def test_invalid_length_buffer(BufferClassFixture):
     with pytest.raises(MaxSizeExceededError):
-        BufferClass(90, [100] * 90)
+        BufferClassFixture(90, [100] * 90)
 
-def test_valid_empty_buffer(BufferClass):
-    a = BufferClass(5, [])
+def test_valid_empty_buffer(BufferClassFixture):
+    a = BufferClassFixture(5, [])
 
     for element in a.buf:
         assert element.value == 0
 
-def test_invalid_buffer_overflow(BufferClass):
+def test_invalid_buffer_overflow(BufferClassFixture):
     with pytest.raises(MaxSizeExceededError):
-        a = BufferClass(32, [67] * 32)
+        a = BufferClassFixture(32, [67] * 32)
         a.buf.append(6)
 
-def test_valid_nested_class(BufferClass, NestedClass):
-    a = BufferClass(5, range(5))
-    b = NestedClass(a, 0xdeadbeef)
+def test_valid_nested_class(BufferClassFixture, NestedClassFixture):
+    a = BufferClassFixture(5, range(5))
+    b = NestedClassFixture(a, 0xdeadbeef)
 
-    assert isinstance(b.buffer, BufferClass)
+    assert isinstance(b.buffer, BufferClassFixture)
     assert b.buffer is a
 
-def test_valid_class_duplicate_members(DuplicateClass):
-    a = DuplicateClass(0xff)
+def test_valid_class_duplicate_members(DuplicateClassFixture):
+    a = DuplicateClassFixture(0xff)
 
     assert isinstance(a.magic, uint32_t)
     assert a.magic.value == 0xff
 
-def test_valid_class_dynamic_buffer(DynamicClass):
-    a = DynamicClass(5, [97] * 50)
+def test_valid_class_dynamic_buffer(DynamicClassFixture):
+    a = DynamicClassFixture(5, [97] * 50)
 
     assert a.magic.value == 5
     for element in a.buf:
         assert element.value == 97
 
-def test_valid_2_classes_are_different(DynamicClass, BufferClass):
-    assert DynamicClass is not BufferClass
+def test_valid_2_classes_are_different(DynamicClassFixture, BufferClassFixture):
+    assert DynamicClassFixture is not BufferClassFixture
 
 def test_valid_class_custom_init_implementation():
     @binary_struct
@@ -124,8 +123,8 @@ def test_valid_class_with_FORMAT_attribute():
         class A:
             FORMAT: uint32_t
 
-def test_valid_class_init_with_no_params(BufferClass):
-    a = BufferClass()
+def test_valid_class_init_with_no_params(BufferClassFixture):
+    a = BufferClassFixture()
 
     assert a.size.value == 0
     for element in a.buf:
