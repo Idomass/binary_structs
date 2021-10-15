@@ -1,4 +1,4 @@
-# Binary Structs
+# Binary Structs (OUTDATED)
 ## General
 The main idea behind BinaryStruct, is to have a pythonic and easy way to work with binary data.
 
@@ -242,7 +242,8 @@ The nested fields issue have now 2 elegant solutions:
     ```
 
 ## WIP/TODO Features
-- [ ] Full Deserialization support
+- [ ] Update README
+- [X] Full Deserialization support
 - [X] Test coverage for `little_endian`
 - [X] Caching support
 - [ ] More test cases for inheritence
@@ -250,7 +251,7 @@ The nested fields issue have now 2 elegant solutions:
 - [ ] Use sphinx docs
 - [ ] Add `+` operator between `binary_struct`
 - [ ] Add `/` operator between `binary_struct` instances
-- [ ] Add default values
+- [X] Add default values
 - [ ] Add control over individual fields
 - [ ] Bitwise operations
 - [ ] Add support for factory classes

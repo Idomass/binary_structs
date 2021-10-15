@@ -1,5 +1,6 @@
 import pytest
 
+from conftest import default_structs
 from binary_struct import binary_struct
 from utils.binary_field import uint32_t, uint8_t
 from utils.buffers.binary_buffer import MaxSizeExceededError
@@ -116,6 +117,26 @@ def test_valid_class_with_FORMAT_attribute():
         class A:
             FORMAT: uint32_t
 
+# Nested Args and KWargs
+def test_valid_init_nested_args(NestedClassFixture, BufferClassFixture):
+    a = NestedClassFixture(buffer=[5, range(5)])
+
+    assert a.buffer == BufferClassFixture(5, range(5))
+
+def test_invalid_init_nested_args(NestedClassFixture):
+    with pytest.raises(TypeError):
+        NestedClassFixture(buffer=[5, range(5), 3])
+
+def test_valid_init_nested_kwargs(NestedClassFixture, BufferClassFixture):
+    a = NestedClassFixture(buffer={'buf': range(3)})
+
+    assert a.buffer == BufferClassFixture(0, range(3))
+
+def test_invalid_init_nested_kwargs(NestedClassFixture):
+    with pytest.raises(TypeError):
+        NestedClassFixture(buffer={'bruh': 19})
+
+# Default value
 def test_valid_class_init_with_no_params(BufferClassFixture):
     a = BufferClassFixture()
 
@@ -147,20 +168,27 @@ def test_valid_default_ctor_instances_are_different():
     assert a.a is not b.a
     assert a.b is not b.b
 
-def test_valid_init_nested_args(NestedClassFixture, BufferClassFixture):
-    a = NestedClassFixture(buffer=[5, range(5)])
+def test_invalid_init_default_value_forbidden_name():
+    with pytest.raises(AttributeError):
+        @binary_struct
+        class DefaultValue:
+            a: uint32_t
+            a_type: uint32_t
 
-    assert a.buffer == BufferClassFixture(5, range(5))
-
-def test_invalid_init_nested_args(NestedClassFixture):
+def test_invalid_init_default_value_bad_value():
     with pytest.raises(TypeError):
-        NestedClassFixture(buffer=[5, range(5), 3])
+        @binary_struct
+        class DefaultValue:
+            a: uint32_t = 'Bad'
 
-def test_valid_init_nested_kwargs(NestedClassFixture, BufferClassFixture):
-    a = NestedClassFixture(buffer={'buf': range(3)})
+        DefaultValue()
 
-    assert a.buffer == BufferClassFixture(0, range(3))
+@pytest.mark.parametrize('expected', default_structs)
+def test_valid_init_default_value(expected):
+    cls = type(expected)
 
-def test_invalid_init_nested_kwargs(NestedClassFixture):
-    with pytest.raises(TypeError):
-        NestedClassFixture(buffer={'bruh': 19})
+    assert cls() == expected
+
+def test_valid_init_default_value_typed_buffer_are_different(DefaultTypedBufferClassFixture):
+    assert DefaultTypedBufferClassFixture().buf is not DefaultTypedBufferClassFixture().buf
+    assert DefaultTypedBufferClassFixture().buf == DefaultTypedBufferClassFixture().buf

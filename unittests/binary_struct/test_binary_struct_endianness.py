@@ -1,5 +1,4 @@
 import pytest
-import struct
 
 from utils.binary_field import *
 from binary_struct import binary_struct
@@ -137,7 +136,7 @@ def test_valid_class_nested_class_default_value(NestedClassFixture):
 
 def test_valid_class_nested_class(NestedClassFixture):
     EndianClass = big_endian(NestedClassFixture)
-    a = EndianClass.buffer(32, [97] * 32)
+    a = EndianClass.buffer_type(32, [97] * 32)
     b = EndianClass(a, 0xdeadbeef)
 
     assert isinstance(b.buffer.size, be_uint32_t)
@@ -153,11 +152,19 @@ def test_valid_class_nested_twice(NestedClassFixture):
     class A:
         nested: EndianClass
 
-    a = A.nested.buffer(32, [97] * 32)
-    b = A.nested(a, 0xdeadbeef)
+    a = A.nested_type.buffer_type(32, [97] * 32)
+    b = A.nested_type(a, 0xdeadbeef)
     c = A(b)
 
     assert isinstance(c.nested.buffer.size, be_uint32_t)
     assert isinstance(c.nested.buffer.buf[0], be_uint8_t)
     assert isinstance(c.nested.magic, be_uint32_t)
     assert c.size_in_bytes == a.size_in_bytes + 4
+
+def test_valid_attr_init(NestedClassFixture):
+    EndianClass = big_endian(NestedClassFixture)
+
+    a = EndianClass.buffer_type(5, range(3))
+    b = EndianClass(a, 500)
+
+    assert b.buffer == a

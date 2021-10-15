@@ -1,3 +1,5 @@
+import pytest
+
 from endianness import big_endian
 from binary_struct import BinaryStructHasher, binary_struct, _process_class
 from utils.binary_field import be_uint8_t, int8_t, uint32_t, uint64_t, uint8_t
@@ -227,6 +229,39 @@ def test_cache_miss_with_gap_in_inheritence():
 
     assert hash(hash1) != hash(hash2)
     assert hash1 != hash2
+
+def test_cache_miss_with_default_value():
+    class A:
+        a: uint32_t = 5
+
+    class B:
+        a: uint32_t = 7
+
+    hash1 = BinaryStructHasher(A)
+    hash2 = BinaryStructHasher(B)
+
+    assert hash(hash1) != hash(hash2)
+
+@pytest.mark.skip(reason='Default value hashing is not supported for now')
+def test_cache_hit_default_value_nested_args_kwargs():
+    @binary_struct
+    class A:
+        a: uint64_t
+
+    class B:
+        b: A = [1]
+
+    class C:
+        b: A = {'a': 1}
+
+    class D:
+        b: A = A(1)
+
+    hash1 = BinaryStructHasher(B)
+    hash2 = BinaryStructHasher(C)
+    hash3 = BinaryStructHasher(D)
+
+    assert hash(hash1) == hash(hash2) == hash(hash3)
 
 # Cache tests for _process_class
 def test_cache_hit_classes_are_different():

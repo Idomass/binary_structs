@@ -7,16 +7,17 @@ The library supports serialization and deserialization of objects, with a clear 
 Basic API:
 @binary_struct
 class BufferWithSize:
-    size: ctypes.c_uint32
-    buf: [ctypes.c_uint8, 64]
+    size: uint32_t
+    buf: [uint8_t, 64]
 """
 
 import sys
+import random
 import logging
 
 from utils.binary_field import BinaryField, PrimitiveTypeField
-from utils.buffers.binary_buffer import BinaryBuffer as _binary_buffer
-from utils.buffers.typed_buffer import TypedBuffer as _typed_buffer
+from utils.buffers.binary_buffer import BinaryBuffer
+from utils.buffers.typed_buffer import TypedBuffer
 
 from enum import Enum
 from functools import lru_cache
@@ -78,6 +79,11 @@ class BinaryStructHasher:
 
             elif annotation_type == AnnotationType.OTHER:
                 underlying_type = annotation
+
+            # Get default value if exists
+            if hasattr(self.type, name):
+                logging.warning('Default value hashing is not supported for now!')
+                return random.randint(0, 2 ** 64)
 
             hashes.append(hash(BinaryStructHasher(underlying_type)))
 
@@ -164,7 +170,7 @@ def _get_annotations_recursively(cls: type) -> OrderedDict:
 def _get_annotation_type(annotation) -> AnnotationType:
     """
     Returns the type of a given annotation.
-    Annotation can be a _binary_buffer, _typed_buffer or something else
+    Annotation can be a BinaryBuffer, TypedBuffer or something else
     """
 
     if isinstance(annotation, list):
@@ -206,11 +212,13 @@ def _init_binary_field(self: type, field_name: str, field_type: BinaryField, fie
     else:
         setattr(self, field_name, field_type(field_value))
 
-def _init_var(name: str, annotation, globals: dict) -> list[str]:
+def _init_var(name: str, annotation, globals: dict, default_value: type) -> list[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
     Returns the python code that is required to init that variable.
     """
+
+    globals[f'{name}_default_value'] = default_value
 
     # Don't allow these type names
     if name in ('size_in_bytes', 'FORMAT'):
@@ -222,24 +230,24 @@ def _init_var(name: str, annotation, globals: dict) -> list[str]:
         annotation, size = annotation
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = _binary_buffer({type_name}, {size}, {name} or [])']
+        init_var = [f'self.{name} = BinaryBuffer({type_name}, {size}, {name} or {name}_default_value or [])']
 
     elif annotation_type == AnnotationType.TYPED_BUFFER:
         annotation = annotation[0]
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = _typed_buffer({type_name}, {name} or [])']
+        init_var = [f'self.{name} = TypedBuffer({type_name}, {name} or {name}_default_value or [])']
 
     elif annotation_type == AnnotationType.OTHER:
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self._init_binary_field("{name}", {type_name}, {name})']
+        init_var = [f'self._init_binary_field("{name}", {type_name}, {name} or {name}_default_value)']
 
     # Make sure annotation implements BinaryField
     if not issubclass(annotation, BinaryField):
         raise TypeError('All fields must implement BinaryField!')
 
-    return init_var, f'{name} = None'
+    return init_var
 
 def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
@@ -262,9 +270,8 @@ def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
                         f'{", ".join(param for param in parent_annotations.keys())})')
 
     # Init variables
-    for name, annotation in attributes.items():
-        init_var_code, default_value = _init_var(name, annotation, globals)
-
+    for name, (annotation, default_value) in attributes.items():
+        init_var_code = _init_var(name, annotation, globals, default_value)
         init_txt.extend(init_var_code)
         init_parameters.append(f'{name} = None')
 
@@ -403,16 +410,20 @@ def _filter_valid_bases(cls, globals: dict) -> tuple[type]:
 
     return tuple(bases_list)
 
-def _set_annotations_as_attributes(cls):
+def _set_nested_classes_as_attributes(cls):
     """
-    Set class annotations as attributes, to allow easy access to underlying type
+    Set nested classes as attributes, to allow easy access to underlying type.
     Can be useful for class that had their endianness converted
     """
 
-    for name, annotation_type in cls.__dict__.get('__annotations__', {}).items():
-        kind = annotation_type[0] if isinstance(annotation_type, list) else annotation_type
+    annotations = _get_annotations_recursively(cls)
+    for attr_name, attr_type in annotations.items():
+        new_attr_name = f'{attr_name}_type'
 
-        setattr(cls, name, kind)
+        if new_attr_name in annotations:
+            raise AttributeError(f'Cannot set binary struct attribute to {new_attr_name}')
+
+        setattr(cls, new_attr_name, attr_type)
 
 @lru_cache
 def _process_class(cls: BinaryStructHasher):
@@ -427,8 +438,8 @@ def _process_class(cls: BinaryStructHasher):
     logging.debug(f'Processing {cls}')
 
     globals = sys.modules[cls.__module__].__dict__.copy()
-    globals['_binary_buffer'] = _binary_buffer
-    globals['_typed_buffer'] = _typed_buffer
+    globals['BinaryBuffer'] = BinaryBuffer
+    globals['TypedBuffer'] = TypedBuffer
 
     annotations = cls.__dict__.get('__annotations__', {})
     logging.debug(f'Found annotations: {annotations}')
@@ -438,9 +449,14 @@ def _process_class(cls: BinaryStructHasher):
 
     logging.debug(f'Found binary bases: {binary_struct_bases}')
 
+    binary_attrs = OrderedDict()
+    for attr_name, annotation in annotations.items():
+        value = getattr(cls, attr_name) if hasattr(cls, attr_name) else None
+        binary_attrs[attr_name] = (annotation, value)
+
     eq_fn           = _create_equal_fn(annotations, globals, binary_struct_bases)
     str_fn          = _create_string_fn(annotations, globals, binary_struct_bases)
-    init_fn         = _create_init_fn(annotations, globals, binary_struct_bases)
+    init_fn         = _create_init_fn(binary_attrs, globals, binary_struct_bases)
     bytes_fn        = _create_bytes_fn(annotations, globals, binary_struct_bases)
     size_fn         = _create_size_fn(annotations, globals, binary_struct_bases)
     size_property   = _create_fn('size_in_bytes', ['self'], ['return self._bs_size()'], globals, is_property=True)
@@ -467,7 +483,7 @@ def _process_class(cls: BinaryStructHasher):
         cls_bases += (BinaryField,)
     new_cls = type(cls.__name__, cls_bases, new_cls_dict)
 
-    _set_annotations_as_attributes(new_cls)
+    _set_nested_classes_as_attributes(new_cls)
 
     return _copy_cls(new_cls, cls_bases)
 
