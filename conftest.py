@@ -62,6 +62,45 @@ class MultipleNestedClass:
     nested: NestedClass
     magic: uint32_t
 
+# Default values
+@binary_struct
+class DefaultValueClass:
+    default_value: uint8_t = 5
+
+@binary_struct
+class DefaultTypedBufferClass:
+    buf: [uint8_t] = range(5)
+
+@binary_struct
+class DefaultBinaryBufferClass:
+    buf: [uint8_t, 10] = range(5)
+
+@binary_struct
+class DefaultNestedClass:
+    nested: BufferClass = BufferClass(5, range(3))
+
+@binary_struct
+class DefaultNestedArgsClass:
+    nested: BufferClass = [5, range(7)]
+
+@binary_struct
+class DefaultNestedKWargsClass:
+    nested: BufferClass = {'size': 5}
+
+@binary_struct
+class DefaultInheritedClass(DefaultNestedClass):
+    pass
+
+default_structs = [
+    (DefaultValueClass, DefaultValueClass(5)),
+    (DefaultBinaryBufferClass, DefaultBinaryBufferClass(list(range(5)) + [0] * 5)),
+    (DefaultTypedBufferClass, DefaultTypedBufferClass(list(range(5)))),
+    (DefaultNestedClass, DefaultNestedClass([5, range(3)])),
+    (DefaultNestedArgsClass, DefaultNestedArgsClass([5, range(7)])),
+    (DefaultNestedKWargsClass, DefaultNestedKWargsClass(nested={'size': 5})),
+    (DefaultInheritedClass, DefaultInheritedClass([5, range(3)])),
+]
+
 # List for parameterize tests
 test_structs = [
     [
@@ -136,6 +175,10 @@ def InheritedClassFixture():
 @pytest.fixture
 def MultipleInheritedClassFixture():
     return MultipleInheritedClass
+
+@pytest.fixture
+def DefaultTypedBufferClassFixture():
+    return DefaultTypedBufferClass
 
 # Caching
 @pytest.fixture(autouse=True)

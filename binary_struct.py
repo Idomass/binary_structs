@@ -7,8 +7,8 @@ The library supports serialization and deserialization of objects, with a clear 
 Basic API:
 @binary_struct
 class BufferWithSize:
-    size: ctypes.c_uint32
-    buf: [ctypes.c_uint8, 64]
+    size: uint32_t
+    buf: [uint8_t, 64]
 """
 
 import logging
@@ -93,6 +93,10 @@ class BinaryStructHasher:
 
 
 def _get_new_binary_struct(bases) -> type:
+    """
+    Generates a new BinaryStruct based on the given bases tuple
+    """
+
     class BinaryStruct(*bases):
         _binary_attrs = {}
         _binary_bases = tuple(list(bases).remove(BinaryField) or []) if BinaryField in bases else bases
@@ -104,10 +108,10 @@ def _get_new_binary_struct(bases) -> type:
 
                 super(parent, self).__init__(**parent_params)
 
-            for name, annotation in __class__._binary_attrs.items():
+            for name, (annotation, default_value) in __class__._binary_attrs.items():
                 logging.debug(f'Creating init var {name} with type {annotation}')
 
-                field_value = binary_params.get(name, None)
+                field_value = binary_params[name] if default_value is None else default_value
 
                 annotation_type = _get_annotation_type(annotation)
                 if annotation_type == AnnotationType.BINARY_BUFFER:
@@ -316,16 +320,19 @@ def _filter_valid_bases(cls) -> tuple[type]:
 
     return tuple(bases_list)
 
-def _set_annotations_as_attributes(cls):
+def _set_nested_classes_as_attributes(cls):
     """
-    Set class annotations as attributes, to allow easy access to underlying type
+    Set nested classes as attributes, to allow easy access to underlying type.
     Can be useful for class that had their endianness converted
     """
 
-    for name, annotation_type in cls.__dict__.get('__annotations__', {}).items():
-        kind = annotation_type[0] if isinstance(annotation_type, list) else annotation_type
+    for attr_name, (attr_type, _) in cls._binary_attrs.items():
+        new_attr_name = f'{attr_name}_type'
 
-        setattr(cls, name, kind)
+        if new_attr_name in cls._binary_attrs:
+            raise AttributeError(f'Cannot set binary struct attribute to {new_attr_name}')
+
+        setattr(cls, new_attr_name, attr_type)
 
 def _remove_keys_from_dict(target: dict, keys: list[str]):
     for key in keys:
@@ -350,15 +357,18 @@ def _process_class(cls: BinaryStructHasher):
 
     # These will be used for creating the new class
     binary_struct_bases = _filter_valid_bases(cls)
-
     NewBinaryStruct = _get_new_binary_struct(binary_struct_bases or (BinaryField,))
 
+    # Make sure there are not annotaions duplications
     parent_annotations = _get_annotations_recursively(NewBinaryStruct)
     _remove_keys_from_dict(annotations, list(parent_annotations.keys()))
 
-    NewBinaryStruct._binary_attrs = annotations
-    logging.debug(f'{NewBinaryStruct._binary_attrs=}')
+    binary_attrs = {}
+    for attr_name, annotation in annotations.items():
+        value = getattr(cls, attr_name) if hasattr(cls, attr_name) else None
+        binary_attrs[attr_name] = (annotation, value)
 
+    NewBinaryStruct._binary_attrs = binary_attrs
     setattr(NewBinaryStruct, '__init__', _create_init_fn(NewBinaryStruct))
 
     # Since NewBinaryClass Inherits only from BinaryStructs', add
@@ -369,7 +379,7 @@ def _process_class(cls: BinaryStructHasher):
     logging.debug(f'Building new class with bases: {(NewBinaryStruct,) + new_bases}')
     new_cls = _copy_cls(cls, (NewBinaryStruct,) + new_bases)
 
-    _set_annotations_as_attributes(new_cls)
+    _set_nested_classes_as_attributes(new_cls)
 
     return new_cls
 

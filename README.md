@@ -251,7 +251,7 @@ The nested fields issue have now 2 elegant solutions:
 - [ ] More test cases for inheritence
 - [X] Convert `binary_struct` to a class
 - [ ] Add `/` operator between `binary_struct` instances
-- [ ] Add default values
+- [X] Add default values
 - [ ] Add control over individual fields
 - [ ] Bitwise operations
 - [ ] Add support for factory classes
