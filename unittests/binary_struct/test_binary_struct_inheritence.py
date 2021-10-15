@@ -1,7 +1,7 @@
 import pytest
 
-from binary_struct import binary_struct
 from utils.binary_field import uint8_t
+from binary_struct import binary_struct, _filter_valid_bases
 
 
 def test_valid_class_custom_fn_implementation_multiple_inheritence():
@@ -67,3 +67,6 @@ def test_invalid_class_inherited_name_conflict(BufferClassFixture, DynamicClassF
         @binary_struct
         class A(BufferClassFixture, DynamicClassFixture):
             pass
+
+def test_valid_inheritenece_does_not_duplicate_bases(InheritedClassFixture, BufferClassFixture):
+    assert BufferClassFixture not in InheritedClassFixture.__bases__

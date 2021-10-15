@@ -242,13 +242,14 @@ The nested fields issue have now 2 elegant solutions:
     ```
 
 ## WIP/TODO Features
-- [ ] Full Deserialization support
+- [X] Full Deserialization support
 - [X] Test coverage for `little_endian`
 - [X] Caching support
-- [ ] More test cases for inheritence
 - [X] Add `__eq__` operator
 - [ ] Use sphinx docs
-- [ ] Add `+` operator between `binary_struct`
+- [ ] Add test cases for classes with custom implementations
+- [ ] More test cases for inheritence
+- [X] Convert `binary_struct` to a class
 - [ ] Add `/` operator between `binary_struct` instances
 - [ ] Add default values
 - [ ] Add control over individual fields
