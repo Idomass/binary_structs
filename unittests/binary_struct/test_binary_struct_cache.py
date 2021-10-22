@@ -251,11 +251,11 @@ def test_cache_hit_endianness_base_classes_are_different():
         data: be_uint8_t
 
     @big_endian
-    class C(B):
+    class C(A):
         pass
 
-    assert C.__bases__[0] is not A
     assert _process_class.cache_info().hits == 1
+    assert C.__base__ is not B
 
 def test_cache_hit_inheritence():
     # cache miss 1

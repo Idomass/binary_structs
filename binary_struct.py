@@ -20,6 +20,10 @@ from utils.buffers.typed_buffer import TypedBuffer as _typed_buffer
 
 from enum import Enum
 from functools import lru_cache
+from collections import OrderedDict
+
+
+LINE = '-' * 100
 
 
 class AnnotationType(Enum):
@@ -38,6 +42,8 @@ class BinaryStructHasher:
     based on the given annotations and their order.
     """
 
+    # TODO Custom implementation testing in required
+
     def __init__(self, kind: type) -> None:
         self._type = kind
 
@@ -55,7 +61,8 @@ class BinaryStructHasher:
 
         hashes = []
         for base in self.type.__bases__:
-            hashes.append(hash(BinaryStructHasher(base)))
+            if base not in (BinaryField, object):
+                hashes.append(hash(BinaryStructHasher(base)))
 
         for name, annotation in self.type.__dict__.get('__annotations__', {}).items():
             hashes.append(hash(name))
@@ -86,10 +93,12 @@ class BinaryStructHasher:
         """
 
         # Check bases
-        other_bases = other.type.__bases__
-        self_bases  = self.type.__bases__
+        other_bases = tuple(base for base in other.type.__bases__ if base not in (object, BinaryField))
+        self_bases  = tuple(base for base in self.type.__bases__ if base not in (object, BinaryField))
 
-        return self_bases == other_bases
+        logging.debug(f'{other_bases}, {self_bases}')
+
+        return other_bases == self_bases
 
 
 def _copy_cls(cls: type, new_bases: tuple) -> type:
@@ -136,15 +145,19 @@ def _insert_type_to_globals(kind: type, globals: dict) -> str:
 
     return name
 
-def _get_annotations_recursively(cls: type) -> dict:
+def _get_annotations_recursively(cls: type) -> OrderedDict:
     """
-    Returns a dictionary of annotations recuresively
+    Returns a dictionary of annotations recuresively for each binary struct
     Used for inheritence tree when multiple layers of annotations are available
     """
 
-    annotations = cls.__dict__.get('__annotations__', {}).copy()
+    annotations = OrderedDict()
     for base in cls.__bases__:
-        annotations.update(_get_annotations_recursively(base))
+        if _is_binary_struct(base):
+            annotations.update(_get_annotations_recursively(base))
+
+    if _is_binary_struct(cls):
+        annotations.update(cls.__dict__.get('__annotations__', {}).copy())
 
     return annotations
 
@@ -203,9 +216,6 @@ def _init_var(name: str, annotation, globals: dict) -> list[str]:
     if name in ('size_in_bytes', 'FORMAT'):
         raise AttributeError(f'Can\'t set attribute name to {name}')
 
-    logging.debug(f'Creating init var {name} with type {annotation}')
-
-
     # TODO match syntax asap
     annotation_type = _get_annotation_type(annotation)
     if annotation_type == AnnotationType.BINARY_BUFFER:
@@ -243,12 +253,12 @@ def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
 
     # Init parent classes if they are binary fields
     for parent in bases:
-        # Add a default value and a super for each parent attribute
+        # Add a default value and an __init__ call for each parent attribute
         parent_annotations = _get_annotations_recursively(parent)
 
         init_parameters += [f'{name} = None' for name in parent_annotations.keys()]
 
-        init_txt.append(f'super({parent.__name__}, self).__init__('
+        init_txt.append(f'{parent.__name__}.__init__(self, '
                         f'{", ".join(param for param in parent_annotations.keys())})')
 
     # Init variables
@@ -269,7 +279,7 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
     lines = ['buf = b""']
 
     for parent in bases:
-        lines += [f'buf += super({parent.__name__}, self).__bytes__()']
+        lines += [f'buf += {parent.__name__}.__bytes__(self)']
 
     # For class attributes
     for attr in attributes.keys():
@@ -291,7 +301,7 @@ def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
     ]
 
     for base in bases:
-        lines.append(f'if not super({base.__name__}, self).__eq__(other):')
+        lines.append(f'if not {base.__name__}.__eq__(self, other):')
         lines.append(f'    return False')
 
     for name in attributes.keys():
@@ -311,7 +321,7 @@ def _create_string_fn(attributes: dict, globals: dict, bases: tuple[type]) -> st
     # Add bases
     for parent in bases:
         lines += [f'parent_str = "\\n    " + "\\n    ".join('
-                  f'line for line in super({parent.__name__}, self).__str__().split("\\n"))']
+                  f'line for line in {parent.__name__}.__str__(self).split("\\n"))']
         lines += [f'string += f"{parent.__name__}: {{parent_str}}\\n"']
 
     # Add class variables
@@ -334,8 +344,8 @@ def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) 
 
     # For this class bases
     for parent in bases:
-        lines.append(f'super({parent.__name__}, self).deserialize(buf)')
-        lines.append(f'buf = buf[super({parent.__name__}, self).size_in_bytes:]')
+        lines.append(f'{parent.__name__}.deserialize(self, buf)')
+        lines.append(f'buf = buf[{parent.__name__}._bs_size(self):]')
 
 
     # For this class attributes
@@ -361,7 +371,7 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
 
     # Add bases
     for parent in bases:
-        lines += [f'counter += super({parent.__name__}, self).size_in_bytes']
+        lines += [f'counter += {parent.__name__}._bs_size(self)']
 
     # Add class variables
     for attr in attributes.keys():
@@ -369,7 +379,14 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
 
     lines += ['return counter']
 
-    return _create_fn('size_in_bytes', ['self'], lines, globals, is_property=True)
+    return _create_fn('_bs_size', ['self'], lines, globals)
+
+def _is_binary_struct(cls: type):
+    """
+    Returns if the given class is a binary struct
+    """
+
+    return issubclass(cls, BinaryField) and getattr(cls, f'_{cls.__name__}__is_binary_struct', False) == True
 
 def _filter_valid_bases(cls, globals: dict) -> tuple[type]:
     """
@@ -378,14 +395,9 @@ def _filter_valid_bases(cls, globals: dict) -> tuple[type]:
 
     bases_list = []
     for parent in cls.__bases__:
-        if not issubclass(parent, BinaryField):
+        if not _is_binary_struct(parent):
             continue
 
-        # Don't allow to decorate a binary struct without inheritence
-        if parent.__name__ == 'BinaryStruct':
-            raise TypeError('Cannot decorate more then once!')
-
-        logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
         _insert_type_to_globals(parent, globals)
         bases_list.append(parent)
 
@@ -411,46 +423,53 @@ def _process_class(cls: BinaryStructHasher):
 
     cls = cls.type
 
+    logging.debug(LINE)
+    logging.debug(f'Processing {cls}')
+
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['_binary_buffer'] = _binary_buffer
     globals['_typed_buffer'] = _typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
-    logging.debug(f'Building {cls}: Found annotations: {annotations}')
+    logging.debug(f'Found annotations: {annotations}')
 
     # These will be used for creating the new class
     binary_struct_bases = _filter_valid_bases(cls, globals)
+
+    logging.debug(f'Found binary bases: {binary_struct_bases}')
 
     eq_fn           = _create_equal_fn(annotations, globals, binary_struct_bases)
     str_fn          = _create_string_fn(annotations, globals, binary_struct_bases)
     init_fn         = _create_init_fn(annotations, globals, binary_struct_bases)
     bytes_fn        = _create_bytes_fn(annotations, globals, binary_struct_bases)
-    size_property   = _create_size_fn(annotations, globals, binary_struct_bases)
+    size_fn         = _create_size_fn(annotations, globals, binary_struct_bases)
+    size_property   = _create_fn('size_in_bytes', ['self'], ['return self._bs_size()'], globals, is_property=True)
     deserialize_fn  = _create_deserialize_fn(annotations, globals, binary_struct_bases)
 
     # BinaryStruct Inherits from each BinaryStruct subclass of cls
-    logging.debug(f'Proccessing {cls}: Using {binary_struct_bases or (BinaryField,)} as base class')
-    BinaryStruct = type('BinaryStruct', binary_struct_bases or (BinaryField,),
-                        {'_init_binary_field':  _init_binary_field,
-                         '__eq__':              eq_fn,
-                         '__str__':             str_fn,
-                         '__init__':            init_fn,
-                         '__bytes__':           bytes_fn,
-                         'size_in_bytes':       size_property,
-                         'deserialize':         deserialize_fn
-                         })
+    fn_dict = {
+        '_init_binary_field':   _init_binary_field,
+        '__eq__':               eq_fn,
+        '__str__':              str_fn,
+        '__init__':             init_fn,
+        '__bytes__':            bytes_fn,
+        '_bs_size':             size_fn,
+        'size_in_bytes':        size_property,
+        'deserialize':          deserialize_fn,
+        f'_{cls.__name__}__is_binary_struct':   True
+    }
 
-    # Since NewBinaryClass Inherits only from BinaryStructs', add
-    # the other bases to the new class
-    other_bases = tuple(set(cls.__bases__)^set(binary_struct_bases))
-    new_bases = other_bases if other_bases != (object,) else tuple()
+    new_cls_dict = cls.__dict__.copy()
+    new_cls_dict.update(fn_dict)
 
-    logging.debug(f'Building new class with bases: {(BinaryStruct,) + new_bases}')
-    new_cls = _copy_cls(cls, (BinaryStruct,) + new_bases)
+    cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
+    if not issubclass(cls, BinaryField):
+        cls_bases += (BinaryField,)
+    new_cls = type(cls.__name__, cls_bases, new_cls_dict)
 
     _set_annotations_as_attributes(new_cls)
 
-    return new_cls
+    return _copy_cls(new_cls, cls_bases)
 
 def binary_struct(cls: type = None):
     """

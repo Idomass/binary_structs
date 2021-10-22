@@ -6,7 +6,7 @@ They are used to convert a BinaryStruct endiannes
 import logging
 
 from utils.binary_field import *
-from binary_struct import binary_struct, _copy_cls
+from binary_struct import binary_struct, _copy_cls, _is_binary_struct
 
 
 # Endianness
@@ -70,7 +70,7 @@ def _convert_endianness(cls: BinaryField, endianness: Endianness):
     Convert the endianness of a single class to the given endianness
     """
 
-    logging.debug(f'Processing {cls}: Found BinaryStruct class - {cls}')
+    logging.debug(f'Converting endianness for {cls}')
     cls = _convert_class_annotations_endianness(cls, endianness)
 
     return binary_struct(cls)
@@ -86,30 +86,18 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
         raise TypeError('Given class is not a BinaryField!')
 
     new_bases = []
-    is_binary_struct = False
     for base in cls.__bases__:
-        # Ignore non-BinaryFields
-        if not issubclass(base, BinaryField):
-            new_bases.append(base)
-
-        elif base.__name__ == 'BinaryStruct':
-            is_binary_struct = True
-            # This means our base should be converted
-            # First, convert its bases
-            for binary_struct in base.__bases__:
-                if binary_struct is BinaryField:
-                    continue
-                new_bases.append(_convert_parents_classes(binary_struct, endianness))
+        if _is_binary_struct(base):
+            new_bases.append(_convert_parents_classes(base, endianness))
 
         else:
-            # Our parent class is a class decorated using binary_struct
-            # or a class that inherits from on of these
-            new_bases.append(_convert_parents_classes(base, endianness))
+            # Ignore non-BinaryFields
+            new_bases.append(base)
 
     # Rebuild class using new bases
     tmp_cls = _copy_cls(cls, tuple(new_bases) or (object,))
 
-    return _convert_endianness(tmp_cls, endianness) if is_binary_struct else tmp_cls
+    return _convert_endianness(tmp_cls, endianness) if _is_binary_struct(cls) else tmp_cls
 
 def little_endian(cls: BinaryField = None):
     """

@@ -1,7 +1,7 @@
 import pytest
 
 from binary_struct import binary_struct
-from utils.binary_field import uint8_t
+from utils.binary_field import uint32_t, uint8_t
 
 
 def test_valid_class_custom_fn_implementation_multiple_inheritence():
@@ -21,8 +21,12 @@ def test_valid_class_custom_fn_implementation_multiple_inheritence():
     assert a.foo()
     assert a.bar()
 
-def test_valid_class_init_with_inheritence(InheritedClassFixture):
-    a = InheritedClassFixture(32, [97] * 32, 0xff)
+def test_valid_class_init_with_inheritence(BufferClassFixture):
+    @binary_struct
+    class A(BufferClassFixture):
+        magic: uint32_t
+
+    a = A(32, [97] * 32, 0xff)
 
     assert a.size == 32
     for element in a.buf:

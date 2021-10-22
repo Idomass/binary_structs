@@ -24,13 +24,6 @@ def test_invalid_simple_class(SimpleClassFixture):
     with pytest.raises(TypeError):
         SimpleClassFixture(10, 7)
 
-def test_invalid_decorated_twice():
-    with pytest.raises(TypeError):
-        @binary_struct
-        @binary_struct
-        class A:
-            a: uint8_t
-
 def test_valid_simple_class_assert_type(SimpleClassFixture):
     a = SimpleClassFixture(5)
 
@@ -98,14 +91,14 @@ def test_valid_class_dynamic_buffer(DynamicClassFixture):
 def test_valid_2_classes_are_different(DynamicClassFixture, BufferClassFixture):
     assert DynamicClassFixture is not BufferClassFixture
 
+@pytest.mark.skip('#TODO, add custom impl tests')
 def test_valid_class_custom_init_implementation():
     @binary_struct
     class A:
         times_two: uint8_t
 
         def __init__(self, times_two):
-            # TODO Unfortunately I can't find a better solution
-            super(type(self), self).__init__(times_two * 2)
+            self.BS__init__(times_two * 2)
 
     a = A(5)
 

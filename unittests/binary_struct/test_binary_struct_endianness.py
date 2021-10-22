@@ -98,7 +98,7 @@ def test_valid_class_old_still_valid_inheritence():
 
     D = big_endian(C)
 
-    assert C.__bases__[0].__bases__[0] is A
+    assert C.__base__ is A
 
 def test_valid_class_longer_inheritence_tree(BufferClassFixture):
     class A(BufferClassFixture):
