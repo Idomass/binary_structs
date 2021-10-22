@@ -21,6 +21,8 @@ from enum import Enum
 from functools import lru_cache
 from collections import OrderedDict
 
+LINE = '--------------------------------------------'
+
 
 class AnnotationType(Enum):
     """
@@ -92,7 +94,7 @@ class BinaryStructHasher:
         return self_bases == other_bases
 
 
-def _get_new_binary_struct(bases) -> type:
+def _get_new_binary_struct(bases: tuple[type], annotations: dict) -> type:
     """
     Generates a new BinaryStruct based on the given bases tuple
     """
@@ -100,17 +102,16 @@ def _get_new_binary_struct(bases) -> type:
     class BinaryStruct(*bases):
         _binary_attrs = {}
         _binary_bases = tuple(list(bases).remove(BinaryField) or []) if BinaryField in bases else bases
+        __annotations__ = annotations
 
         def _init_cls(self, **binary_params: dict):
             for parent in __class__._binary_bases:
                 # Pass only relevant parameters
-                parent_params = {key: binary_params[key] for key in _get_annotations_recursively(parent)}
+                parent_params = {key: binary_params[key] for key in _get_annotations(parent)}
 
                 super(parent, self).__init__(**parent_params)
 
             for name, (annotation, default_value) in __class__._binary_attrs.items():
-                logging.debug(f'Creating init var {name} with type {annotation}')
-
                 field_value = binary_params[name] if default_value is None else default_value
 
                 annotation_type = _get_annotation_type(annotation)
@@ -244,19 +245,23 @@ def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], 
 
     return ns[name]
 
-def _get_annotations_recursively(cls: type) -> OrderedDict:
+def _get_annotations(cls: type) -> OrderedDict:
     """
-    Returns a dictionary of annotations recuresively
-    Used for inheritence tree when multiple layers of annotations are available
+    Returns an OrderedDict of annotations for all valid binary_struct frames
+    in the inheritence tree
     """
 
-    new_annotations = OrderedDict()
-    for base in cls._binary_bases:
-        new_annotations.update(_get_annotations_recursively(base))
+    annotations = OrderedDict()
 
-    new_annotations.update(OrderedDict(cls.__dict__.get('__annotations__', {})))
+    # A base might not be a binary struct, but one of his parents
+    for base in _get_binary_struct_frames_recursively(cls):
+        annotations.update(base.__dict__.get('__annotations__', {}))
 
-    return new_annotations
+    # Add class annotations if class is a BinaryStruct
+    if cls.__name__ == 'BinaryStruct':
+        annotations.update(cls.__dict__.get('__annotations__', {}))
+
+    return annotations
 
 def _get_annotation_type(annotation) -> AnnotationType:
     """
@@ -277,6 +282,27 @@ def _get_annotation_type(annotation) -> AnnotationType:
     else:
         return AnnotationType.OTHER
 
+def _get_binary_struct_frames_recursively(cls) -> tuple[type]:
+    """
+    Similar to _filter_valid_bases, but returns the frames of the
+    BinaryStruct (the original decorated class) instead of the base.
+
+    cls must be a BinaryField, and not a BinaryStruct
+    """
+
+    frame_list = []
+    for base in cls.__bases__:
+        # Ignore non BinaryField paths
+        if not issubclass(base, BinaryField):
+            continue
+
+        frame_list.extend(_get_binary_struct_frames_recursively(base))
+
+        if base.__name__ == 'BinaryStruct':
+            frame_list.append(base)
+
+    return tuple(frame_list)
+
 def _create_init_fn(cls):
     """
     Create bytes function and return it.
@@ -288,7 +314,7 @@ def _create_init_fn(cls):
 
     # Add parents parameters
     for parent in cls._binary_bases:
-        for attr_name in _get_annotations_recursively(parent):
+        for attr_name in _get_annotations(parent):
             init_params.append(f'{attr_name} = None')
             init_txt.append(f'init_dict["{attr_name}"] = {attr_name}')
 
@@ -303,7 +329,7 @@ def _create_init_fn(cls):
 
 def _filter_valid_bases(cls) -> tuple[type]:
     """
-    Returns every valid BinaryStruct base in class.
+    Returns every valid BinaryStruct decendant base in class.
     """
 
     bases_list = []
@@ -315,7 +341,6 @@ def _filter_valid_bases(cls) -> tuple[type]:
         if parent.__name__ == 'BinaryStruct':
             raise TypeError('Cannot decorate more then once!')
 
-        logging.debug(f'Processing {cls}: Found BinaryField base class {parent}')
         bases_list.append(parent)
 
     return tuple(bases_list)
@@ -334,11 +359,6 @@ def _set_nested_classes_as_attributes(cls):
 
         setattr(cls, new_attr_name, attr_type)
 
-def _remove_keys_from_dict(target: dict, keys: list[str]):
-    for key in keys:
-        if key in target:
-            target.pop(key)
-
 @lru_cache
 def _process_class(cls: BinaryStructHasher):
     """
@@ -348,25 +368,28 @@ def _process_class(cls: BinaryStructHasher):
 
     cls = cls.type
 
-    annotations = cls.__dict__.get('__annotations__', {})
-    # Don't allow these type names
-    if any(name in ('size_in_bytes', 'FORMAT') for name in annotations.keys()):
-        raise AttributeError(f'Can\'t set attribute, invalid name!')
-
-    logging.debug(f'Building {cls}: Found annotations: {annotations}')
+    logging.debug(LINE)
+    logging.debug(f'Proccessing class {cls}')
 
     # These will be used for creating the new class
     binary_struct_bases = _filter_valid_bases(cls)
-    NewBinaryStruct = _get_new_binary_struct(binary_struct_bases or (BinaryField,))
+    logging.debug(f'Found bases: {binary_struct_bases}')
 
-    # Make sure there are not annotaions duplications
-    parent_annotations = _get_annotations_recursively(NewBinaryStruct)
-    _remove_keys_from_dict(annotations, list(parent_annotations.keys()))
+    cls_annotations = cls.__dict__.get('__annotations__', {})
+    # Don't allow these type names
+    if any(name in ('size_in_bytes', 'FORMAT') for name in cls_annotations.keys()):
+        raise AttributeError(f'Can\'t set attribute, invalid name!')
 
+    NewBinaryStruct = _get_new_binary_struct(binary_struct_bases or (BinaryField,),
+                                             cls_annotations)
+
+    # Build binary attributes from annotations
     binary_attrs = {}
-    for attr_name, annotation in annotations.items():
+    for attr_name, annotation in cls_annotations.items():
         value = getattr(cls, attr_name) if hasattr(cls, attr_name) else None
         binary_attrs[attr_name] = (annotation, value)
+
+    logging.debug(f'Setting attributes: {binary_attrs}')
 
     NewBinaryStruct._binary_attrs = binary_attrs
     setattr(NewBinaryStruct, '__init__', _create_init_fn(NewBinaryStruct))
@@ -375,9 +398,10 @@ def _process_class(cls: BinaryStructHasher):
     # the other bases to the new class
     new_bases = tuple(base for base in cls.__bases__ if base not in binary_struct_bases)
     new_bases = new_bases if new_bases != (object,) else tuple()
+    new_bases = (NewBinaryStruct,) + new_bases
 
-    logging.debug(f'Building new class with bases: {(NewBinaryStruct,) + new_bases}')
-    new_cls = _copy_cls(cls, (NewBinaryStruct,) + new_bases)
+    logging.debug(f'Building new class with bases: {new_bases}')
+    new_cls = _copy_cls(cls, new_bases)
 
     _set_nested_classes_as_attributes(new_cls)
 

@@ -99,19 +99,6 @@ def test_valid_class_dynamic_buffer(DynamicClassFixture):
 def test_valid_2_classes_are_different(DynamicClassFixture, BufferClassFixture):
     assert DynamicClassFixture is not BufferClassFixture
 
-def test_valid_class_custom_init_implementation():
-    @binary_struct
-    class A:
-        times_two: uint8_t
-
-        def __init__(self, times_two):
-            # TODO Unfortunately I can't find a better solution
-            super(type(self), self).__init__(times_two * 2)
-
-    a = A(5)
-
-    assert a.times_two.value == 10
-
 def test_valid_class_with_size_in_bytes_attribute():
     with pytest.raises(AttributeError):
         @binary_struct

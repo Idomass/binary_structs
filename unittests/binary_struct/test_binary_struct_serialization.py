@@ -1,15 +1,7 @@
 import struct
 import pytest
 
-from endianness import big_endian, little_endian
-from conftest import EmptyClass, empty_decorator, test_structs
-
-
-available_decorators = [
-    [empty_decorator, '='],
-    [big_endian, '>'],
-    [little_endian, '<']
-]
+from conftest import EmptyClass, available_decorators, test_structs
 
 # List of struct.pack format, and fitting arguements for the test_structs list
 structs_formats = [

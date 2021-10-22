@@ -1,25 +1,8 @@
 import pytest
 
-from utils.binary_field import uint8_t
+from utils.binary_field import uint16_t, uint32_t, uint64_t, uint8_t
 from binary_struct import binary_struct, _filter_valid_bases
 
-
-def test_valid_class_custom_fn_implementation_multiple_inheritence():
-    class B:
-        def foo(self):
-            return True
-
-    class C:
-        def bar(self):
-            return True
-
-    @binary_struct
-    class A(B, C):
-        pass
-
-    a = A()
-    assert a.foo()
-    assert a.bar()
 
 def test_valid_class_init_with_inheritence(InheritedClassFixture):
     a = InheritedClassFixture(32, [97] * 32, 0xff)
@@ -70,3 +53,52 @@ def test_invalid_class_inherited_name_conflict(BufferClassFixture, DynamicClassF
 
 def test_valid_inheritenece_does_not_duplicate_bases(InheritedClassFixture, BufferClassFixture):
     assert BufferClassFixture not in InheritedClassFixture.__bases__
+
+def test_valid_inheritence_non_binary_struct(BufferClassFixture):
+    class A(BufferClassFixture):
+        pass
+
+    a = A(5, range(3))
+    b = BufferClassFixture(5, range(3))
+
+    assert a.size == b.size
+    assert a.buf == b.buf
+
+def test_valid_inheritence_mixed_chain(BufferClassFixture):
+    class NotABase(BufferClassFixture):
+        bad: int
+
+    @binary_struct
+    class B(NotABase):
+        magic: uint32_t
+
+    b = B(5, [0], 11)
+
+    assert b.magic.value == 11
+    assert b.size.value == 5
+    assert b.buf == [0] * 32
+    assert b.size_in_bytes == 40
+    assert not hasattr(b, 'bad')
+
+def test_valid_inheritence_binary_struct_on_top():
+    class A:
+        bad: int
+
+    @binary_struct
+    class B(A):
+        real: uint32_t
+
+    b = B(5)
+    assert b.real.value == 5
+    assert not hasattr(b, 'bad')
+
+def test_valid_inheritence_different_chains(BufferClassFixture):
+    class C:
+        bad: uint16_t
+
+    @binary_struct
+    class A(BufferClassFixture, C):
+        magic: uint64_t
+
+    a = A(5, [1, 2], 99)
+    assert not hasattr(a, 'bad')

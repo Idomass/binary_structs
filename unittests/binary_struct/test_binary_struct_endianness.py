@@ -168,3 +168,16 @@ def test_valid_attr_init(NestedClassFixture):
     b = EndianClass(a, 500)
 
     assert b.buffer == a
+
+def test_valid_mixed_inheritence_chain(BufferClassFixture):
+    class A(BufferClassFixture):
+        bad: int
+
+    @big_endian
+    @binary_struct
+    class B(A):
+        bruh: uint32_t
+
+    a = B(100, [])
+
+    assert not hasattr(a, 'bad')
