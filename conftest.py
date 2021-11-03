@@ -1,12 +1,19 @@
 import pytest
 
-from utils.buffers.typed_buffer import TypedBuffer
+from endianness import big_endian, little_endian
 from utils.binary_field import uint8_t, uint32_t
+from utils.buffers.typed_buffer import TypedBuffer
 from binary_struct import binary_struct, _process_class
 
 # misc
 def empty_decorator(cls):
     return cls
+
+available_decorators = [
+    [empty_decorator, '='],
+    [big_endian, '>'],
+    [little_endian, '<']
+]
 
 # buffers
 @pytest.fixture

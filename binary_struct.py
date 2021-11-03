@@ -354,7 +354,6 @@ def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) 
         lines.append(f'{parent.__name__}.deserialize(self, buf)')
         lines.append(f'buf = buf[{parent.__name__}._bs_size(self):]')
 
-
     # For this class attributes
     for name, annotation in attributes.items():
         annotation_type = _get_annotation_type(annotation)

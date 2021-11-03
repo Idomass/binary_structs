@@ -243,9 +243,11 @@ The nested fields issue have now 2 elegant solutions:
 
 ## WIP/TODO Features
 - [ ] Update README
+- [ ] Full default value support
 - [X] Full Deserialization support
 - [X] Test coverage for `little_endian`
 - [X] Caching support
+- [ ] Hashing support
 - [ ] More test cases for inheritence
 - [X] Add `__eq__` operator
 - [ ] Use sphinx docs
