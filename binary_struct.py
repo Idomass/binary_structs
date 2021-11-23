@@ -20,7 +20,6 @@ from utils.buffers.binary_buffer import BinaryBuffer
 from utils.buffers.typed_buffer import TypedBuffer
 
 from enum import Enum
-from functools import lru_cache
 from collections import OrderedDict
 
 
@@ -35,76 +34,6 @@ class AnnotationType(Enum):
     OTHER = 0
     TYPED_BUFFER = 1
     BINARY_BUFFER = 2
-
-
-class BinaryStructHasher:
-    """
-    This class gets a type in init, and calculates a hash
-    based on the given annotations and their order.
-    """
-
-    # TODO Custom implementation testing in required
-
-    def __init__(self, kind: type) -> None:
-        self._type = kind
-
-        self._hash_value = hash(self.type) if issubclass(self.type, PrimitiveTypeField) \
-                           else self._calculate_hash()
-
-    @property
-    def type(self):
-        return self._type
-
-    def _calculate_hash(self) -> int:
-        """
-        Calculate the hash using the given types annotations
-        """
-
-        hashes = []
-        for base in self.type.__bases__:
-            if base not in (BinaryField, object):
-                hashes.append(hash(BinaryStructHasher(base)))
-
-        for name, annotation in self.type.__dict__.get('__annotations__', {}).items():
-            hashes.append(hash(name))
-
-            annotation_type = _get_annotation_type(annotation)
-            if annotation_type == AnnotationType.BINARY_BUFFER:
-                underlying_type, size = annotation
-
-                hashes.append(hash(size))
-
-            elif annotation_type == AnnotationType.TYPED_BUFFER:
-                underlying_type = annotation[0]
-
-            elif annotation_type == AnnotationType.OTHER:
-                underlying_type = annotation
-
-            # Get default value if exists
-            if hasattr(self.type, name):
-                logging.warning('Default value hashing is not supported for now!')
-                return random.randint(0, 2 ** 64)
-
-            hashes.append(hash(BinaryStructHasher(underlying_type)))
-
-        return hash(tuple(hashes))
-
-    def __hash__(self) -> int:
-        return self._hash_value
-
-    def __eq__(self, other: object) -> bool:
-        """
-        Two BinaryStructHasher will be treated as equal if they have the same bases
-        and the same annotations
-        """
-
-        # Check bases
-        other_bases = tuple(base for base in other.type.__bases__ if base not in (object, BinaryField))
-        self_bases  = tuple(base for base in self.type.__bases__ if base not in (object, BinaryField))
-
-        logging.debug(f'{other_bases}, {self_bases}')
-
-        return other_bases == self_bases
 
 
 def _copy_cls(cls: type, new_bases: tuple) -> type:
@@ -428,14 +357,11 @@ def _set_nested_classes_as_attributes(cls):
 
         setattr(cls, new_attr_name, attr_type)
 
-@lru_cache
-def _process_class(cls: BinaryStructHasher):
+def _process_class(cls):
     """
     This function is the main logic unit, it parses the different parameters and
     returns a processed class
     """
-
-    cls = cls.type
 
     logging.debug(LINE)
     logging.debug(f'Processing {cls}')
@@ -497,17 +423,7 @@ def binary_struct(cls: type = None):
     """
 
     def wrap(cls):
-        old_hits = _process_class.cache_info().hits
-        new_cls = _process_class(BinaryStructHasher(cls))
-        new_hits = _process_class.cache_info().hits
-
-        # If cache was used, the class must be copied
-        if new_hits > old_hits:
-            logging.debug(f'Cache hit, copying {new_cls}')
-
-            return _copy_cls(new_cls, new_cls.__bases__)
-        else:
-            return  new_cls
+        return _process_class(cls)
 
     if cls is None:
         return wrap

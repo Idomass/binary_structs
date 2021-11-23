@@ -186,8 +186,3 @@ def MultipleInheritedClassFixture():
 @pytest.fixture
 def DefaultTypedBufferClassFixture():
     return DefaultTypedBufferClass
-
-# Caching
-@pytest.fixture(autouse=True)
-def clear_cache():
-    _process_class.cache_clear()
