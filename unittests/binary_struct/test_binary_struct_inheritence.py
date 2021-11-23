@@ -1,7 +1,7 @@
 import pytest
 
 from utils.binary_field import uint16_t, uint32_t, uint64_t, uint8_t
-from binary_struct import binary_struct, _filter_valid_bases
+from binary_struct import binary_struct
 
 
 def test_valid_class_init_with_inheritence(InheritedClassFixture):

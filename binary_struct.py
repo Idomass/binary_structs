@@ -402,6 +402,10 @@ def _filter_valid_bases(cls, globals: dict) -> tuple[type]:
     bases_list = []
     for parent in cls.__bases__:
         if not _is_binary_struct(parent):
+            if issubclass(parent, BinaryField):
+                # One of the parents is a binary struct
+                bases_list.extend(_filter_valid_bases(parent, globals))
+
             continue
 
         _insert_type_to_globals(parent, globals)
