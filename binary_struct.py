@@ -52,20 +52,21 @@ def _copy_cls(cls: type, new_bases: tuple) -> type:
 
     return type(cls.__name__, new_bases, cls_dict)
 
-def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {},
-               is_property: bool = False):
+def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):
     """
     This function receives a name for the function, and returns a
     function with the given locals and globals
     """
 
     lines_as_str = '\n    ' + '\n    '.join(lines)
-    fn_text = '@property\n' if is_property else ''
-    fn_text += f'def {name}({", ".join(local_params)}):{lines_as_str}'
+    fn_text = f'def {name}({", ".join(local_params)}):{lines_as_str}'
     logging.debug(f'Created new function:\n{fn_text}')
 
     ns = {}
     exec(fn_text, globals, ns)
+
+    fn = ns[name]
+    setattr(fn, 'bs_generated_func', True)
 
     return ns[name]
 
@@ -330,15 +331,13 @@ def _filter_valid_bases(cls, globals: dict) -> tuple[type]:
 
     bases_list = []
     for parent in cls.__bases__:
-        if not _is_binary_struct(parent):
-            if issubclass(parent, BinaryField):
-                # One of the parents is a binary struct
-                bases_list.extend(_filter_valid_bases(parent, globals))
+        if _is_binary_struct(parent):
+            _insert_type_to_globals(parent, globals)
+            bases_list.append(parent)
 
-            continue
-
-        _insert_type_to_globals(parent, globals)
-        bases_list.append(parent)
+        elif issubclass(parent, BinaryField):
+            # One of the parents is a binary struct
+            bases_list.extend(_filter_valid_bases(parent, globals))
 
     return tuple(bases_list)
 
@@ -388,24 +387,31 @@ def _process_class(cls):
     init_fn         = _create_init_fn(binary_attrs, globals, binary_struct_bases)
     bytes_fn        = _create_bytes_fn(annotations, globals, binary_struct_bases)
     size_fn         = _create_size_fn(annotations, globals, binary_struct_bases)
-    size_property   = _create_fn('size_in_bytes', ['self'], ['return self._bs_size()'], globals, is_property=True)
     deserialize_fn  = _create_deserialize_fn(annotations, globals, binary_struct_bases)
 
     # BinaryStruct Inherits from each BinaryStruct subclass of cls
-    fn_dict = {
-        '_init_binary_field':   _init_binary_field,
+    generated_fns = {
         '__eq__':               eq_fn,
         '__str__':              str_fn,
         '__init__':             init_fn,
         '__bytes__':            bytes_fn,
         '_bs_size':             size_fn,
-        'size_in_bytes':        size_property,
         'deserialize':          deserialize_fn,
+    }
+
+    other_attrs = {
+        '_init_binary_field':   _init_binary_field,
+        'size_in_bytes':        property(size_fn),
         f'_{cls.__name__}__is_binary_struct':   True
     }
 
     new_cls_dict = cls.__dict__.copy()
-    new_cls_dict.update(fn_dict)
+    for name, fn in generated_fns.items():
+        new_fn_name = f'{cls.__name__}{name}' if name in new_cls_dict else name
+        assert new_fn_name not in new_cls_dict, 'Illegal name used for function'
+        new_cls_dict[new_fn_name] = fn
+
+    new_cls_dict.update(other_attrs)
 
     cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
     if not issubclass(cls, BinaryField):
@@ -414,7 +420,7 @@ def _process_class(cls):
 
     _set_nested_classes_as_attributes(new_cls)
 
-    return _copy_cls(new_cls, cls_bases)
+    return new_cls
 
 def binary_struct(cls: type = None):
     """

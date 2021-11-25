@@ -73,7 +73,11 @@ def _convert_endianness(cls: BinaryField, endianness: Endianness):
     logging.debug(f'Converting endianness for {cls}')
     cls = _convert_class_annotations_endianness(cls, endianness)
 
-    return binary_struct(cls)
+    # Filter out previously generated functions
+    is_a_valid_field = lambda field: not callable(field[1]) or not hasattr(field[1], 'bs_generated_func')
+    new_cls_dict = dict(filter(is_a_valid_field, cls.__dict__.items()))
+
+    return binary_struct(type(cls.__name__, cls.__bases__, new_cls_dict))
 
 def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     """
