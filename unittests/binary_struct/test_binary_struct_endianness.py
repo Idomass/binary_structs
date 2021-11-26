@@ -46,15 +46,10 @@ def test_valid_class_simple_inhertience(BufferClassFixture):
     assert a.size_in_bytes == 38
 
 def test_valid_class_simple_inhertience_not_binary_struct(BufferClassFixture):
-    @big_endian
-    class A(BufferClassFixture):
-        magic: uint8_t
-
-    a = A(5, [1, 2, 3])
-    assert isinstance(a.size, be_uint32_t)
-    assert isinstance(a.buf[0], be_uint8_t)
-    assert not hasattr(a, 'magic')
-    assert a.size_in_bytes == 36
+    with pytest.raises(TypeError):
+        @big_endian
+        class A(BufferClassFixture):
+            magic: uint8_t
 
 def test_valid_class_simple_inhertience_old_still_valid(BufferClassFixture):
     A = big_endian(BufferClassFixture)
@@ -90,14 +85,20 @@ def test_valid_class_old_still_valid_inheritence():
     @binary_struct
     class A:
         magic: uint32_t
+        a: uint32_t
+        b: [uint8_t]
+        c: [uint8_t, 32]
 
     @binary_struct
-    class C(A):
+    class B(A):
         pass
 
-    D = big_endian(C)
+    C = big_endian(B)
 
-    assert C.__base__ is A
+    assert B.__base__ is A
+    assert A.a_type == uint32_t
+    assert A.b_type == [uint8_t]
+    assert A.c_type == [uint8_t, 32]
 
 def test_valid_class_longer_inheritence_tree(BufferClassFixture):
     class A(BufferClassFixture):
@@ -107,12 +108,15 @@ def test_valid_class_longer_inheritence_tree(BufferClassFixture):
         pass
 
     @big_endian
+    @binary_struct
     class C(B):
         pass
 
+    assert C.__base__.__base__.__base__ is not BufferClassFixture
+
     a = C(5, [1, 2, 3])
-    assert isinstance(a.size, uint32_t)
-    assert isinstance(a.buf[0], uint8_t)
+    assert isinstance(a.size, be_uint32_t)
+    assert isinstance(a.buf[0], be_uint8_t)
 
 def test_valid_class_unrelated_inheritence_is_still_valid(BufferClassFixture):
     class A:

@@ -5,11 +5,11 @@ They are used to convert a BinaryStruct endiannes
 
 import logging
 
+from copy import deepcopy
 from utils.binary_field import *
-from binary_struct import binary_struct, _copy_cls, _is_binary_struct
+from binary_struct import binary_struct, _is_binary_struct
 
 
-# Endianness
 def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
     """
     Convert PrimitiveTypeFields to the given endianness.
@@ -63,21 +63,28 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
         else:
             annotations[annotation_name] = new_kind
 
-    return cls
-
-def _convert_endianness(cls: BinaryField, endianness: Endianness):
+def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: Endianness):
     """
-    Convert the endianness of a single class to the given endianness
+    Convert the endianness of a single class to the given endianness.
+    The class is being rebuilt in order to not destroy the old one.
     """
 
     logging.debug(f'Converting endianness for {cls}')
-    cls = _convert_class_annotations_endianness(cls, endianness)
 
     # Filter out previously generated functions
     is_a_valid_field = lambda field: not callable(field[1]) or not hasattr(field[1], 'bs_generated_func')
-    new_cls_dict = dict(filter(is_a_valid_field, cls.__dict__.items()))
+    new_dict = dict(filter(is_a_valid_field, cls.__dict__.items()))
 
-    return binary_struct(type(cls.__name__, cls.__bases__, new_cls_dict))
+    new_dict['__annotations__'] = dict(deepcopy(cls.__dict__.get('__annotations__', {})))
+
+    new_dict.pop('__dict__', None)
+    new_dict.pop('__weakref__', None)
+
+    # Rebuild class
+    cls = type(cls.__name__, new_bases, new_dict)
+    _convert_class_annotations_endianness(cls, endianness)
+
+    return binary_struct(cls)
 
 def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     """
@@ -86,45 +93,40 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     For other classes, we only replace the base classes if neccesary
     """
 
-    if not issubclass(cls, BinaryField):
-        raise TypeError('Given class is not a BinaryField!')
-
     new_bases = []
     for base in cls.__bases__:
-        if _is_binary_struct(base):
+        if issubclass(base, BinaryField):
             new_bases.append(_convert_parents_classes(base, endianness))
 
         else:
             # Ignore non-BinaryFields
             new_bases.append(base)
 
-    # Rebuild class using new bases
-    tmp_cls = _copy_cls(cls, tuple(new_bases) or (object,))
+    return _convert_endianness(cls, tuple(new_bases) or (object,), endianness)  \
+           if _is_binary_struct(cls) else type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
 
-    return _convert_endianness(tmp_cls, endianness) if _is_binary_struct(cls) else tmp_cls
+def endian_decorator(cls, endianness: Endianness):
+    if not _is_binary_struct(cls):
+        raise TypeError('Given class is not a BinaryField!')
+
+    def wrap(cls):
+        return _convert_parents_classes(cls, endianness)
+
+    if cls is None:
+        return wrap
+
+    return wrap(cls)
 
 def little_endian(cls: BinaryField = None):
     """
     Convert a BinaryField class to little_endian
     """
 
-    def wrap(cls):
-        return _convert_parents_classes(cls, Endianness.LITTLE)
-
-    if cls is None:
-        return wrap
-
-    return wrap(cls)
+    return endian_decorator(cls, Endianness.LITTLE)
 
 def big_endian(cls: BinaryField = None):
     """
     Convert a BinaryField class to big_endian
     """
 
-    def wrap(cls):
-        return _convert_parents_classes(cls, Endianness.BIG)
-
-    if cls is None:
-        return wrap
-
-    return wrap(cls)
+    return endian_decorator(cls, Endianness.BIG)

@@ -37,22 +37,6 @@ class AnnotationType(Enum):
     BINARY_BUFFER = 2
 
 
-def _copy_cls(cls: type, new_bases: tuple) -> type:
-    """
-    Copy a class and return the newly created one
-    This method will copy the annotations of the new class too
-    """
-
-    # copy dict except __weakref__, __dict__
-    cls_dict = dict(cls.__dict__)
-    cls_dict.pop('__weakref__', None)
-    cls_dict.pop('__dict__', None)
-
-    # deep copy __annotations__
-    cls_dict['__annotations__'] = dict(cls.__dict__.get('__annotations__', {}))
-
-    return type(cls.__name__, new_bases, cls_dict)
-
 def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):
     """
     This function receives a name for the function, and returns a
@@ -380,9 +364,14 @@ def _process_class(cls):
     annotations = cls.__dict__.get('__annotations__', {})
     logging.debug(f'Found annotations: {annotations}')
 
+    # Make sure the created class is a subclass of BinaryField
+    if not issubclass(cls, BinaryField):
+        cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
+        cls_bases += (BinaryField,)
+        cls = type(cls.__name__, cls_bases, dict(cls.__dict__))
+
     # These will be used for creating the new class
     binary_struct_bases = _filter_valid_bases(cls, globals)
-
     logging.debug(f'Found binary bases: {binary_struct_bases}')
 
     binary_attrs = OrderedDict()
@@ -400,11 +389,10 @@ def _process_class(cls):
         'deserialize':  _create_deserialize_fn(annotations, globals, binary_struct_bases),
     }
 
-    new_cls_dict = cls.__dict__.copy()
     for name, fn in generated_fns.items():
-        new_fn_name = f'{cls.__name__}{name}' if name in new_cls_dict else name
-        assert new_fn_name not in new_cls_dict, 'Illegal name used for function'
-        new_cls_dict[new_fn_name] = fn
+        new_fn_name = f'{cls.__name__}{name}' if name in cls.__dict__ else name
+        assert new_fn_name not in cls.__dict__, 'Illegal name used for function'
+        setattr(cls, new_fn_name, fn)
 
     # Add other attributes
     other_attrs = {
@@ -413,17 +401,13 @@ def _process_class(cls):
         f'_{cls.__name__}__is_binary_struct':   True
     }
 
-    other_attrs.update(new_cls_dict)
-    new_cls_dict = other_attrs
+    for name, attr in other_attrs.items():
+        if name not in cls.__dict__:
+            setattr(cls, name, attr)
 
-    cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
-    if not issubclass(cls, BinaryField):
-        cls_bases += (BinaryField,)
-    new_cls = type(cls.__name__, cls_bases, new_cls_dict)
+    _set_nested_classes_as_attributes(cls)
 
-    _set_nested_classes_as_attributes(new_cls)
-
-    return new_cls
+    return cls
 
 def binary_struct(cls: type = None):
     """
