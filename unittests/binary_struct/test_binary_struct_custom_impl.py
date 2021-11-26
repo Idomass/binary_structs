@@ -38,7 +38,64 @@ def test_valid_class_custom_implementation_init(decorator):
 
     assert a.times_two.value == 10
 
-#TODO Test custom init with different signature
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_custom_implementation_init_with_inheritence(decorator):
+    @binary_struct
+    class A:
+        a: uint8_t
+
+        def __init__(self, a, msg1, msg2 = 5):
+            self.A__init__(a)
+            self.msg1 = msg1
+            self.msg2 = msg2
+
+    @binary_struct
+    class B(A):
+        b: uint8_t
+
+    cls = decorator(B)
+    b = cls(9, "Hello", b=16)
+
+    assert b.msg1 == "Hello"
+    assert b.msg2 == 5
+    assert b.a.value == 9
+    assert b.b.value == 16
+
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_custom_implementation_init_with_multiple_inheritence(decorator):
+    @binary_struct
+    class A:
+        a: uint8_t
+
+        def __init__(self, a, msg1):
+            self.A__init__(a)
+            self.msg1 = msg1
+
+    @binary_struct
+    class B:
+        b: uint8_t
+
+        def __init__(self, b, msg2 = 5):
+            self.B__init__(b)
+            self.msg2 = msg2
+
+    @binary_struct
+    class C(A, B):
+        c: [uint8_t]
+
+        def __init__(self, a, msg1, b, msg2, msg3):
+            self.C__init__(a, msg1, b, msg2, range(3))
+            self.msg3 = msg3
+
+    cls = decorator(C)
+    c = cls(5, "Hi", 0xff, "No", "Ok")
+
+    assert c.a.value == 5
+    assert c.b.value == 0xff
+    assert c.c == list(range(3))
+    assert c.msg1 == "Hi"
+    assert c.msg2 == "No"
+    assert c.msg3 == "Ok"
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_inheritence_custom_implementation(BufferClassFixture, decorator):
@@ -77,5 +134,17 @@ def test_valid_class_multiple_inheritence_custom_implementation(decorator):
 
     assert bytes(cls()) == b'CA\xff\x00B'
 
-#TODO Test custom init with different signature with multiple inhertience
-#TODO Test with custom size in bytes property
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_custom_implementation_size_property(decorator):
+    @binary_struct
+    class A:
+        a: [uint8_t]
+
+        @property
+        def size_in_bytes(self):
+            return 5 + self._bs_size()
+
+    cls = decorator(A)
+    a = cls(range(7))
+
+    assert a.size_in_bytes == 12

@@ -14,6 +14,7 @@ class BufferWithSize:
 import sys
 import random
 import logging
+import inspect
 
 from utils.binary_field import BinaryField, PrimitiveTypeField
 from utils.buffers.binary_buffer import BinaryBuffer
@@ -187,25 +188,32 @@ def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
 
     init_txt = []
-    init_parameters = ['self']
+    init_args = ['self']
+    init_kwargs = []
 
     # Init parent classes if they are binary fields
     for parent in bases:
-        # Add a default value and an __init__ call for each parent attribute
-        parent_annotations = _get_annotations_recursively(parent)
+        for param in inspect.signature(parent.__init__).parameters.values():
+            if param.name == 'self':
+                continue
 
-        init_parameters += [f'{name} = None' for name in parent_annotations.keys()]
+            if param.default is inspect._empty:
+                init_args.append(param.name)
 
+            else:
+                init_kwargs.append(f'{param.name} = {param.default}')
+
+        parent_variables = parent.__init__.__code__.co_varnames[1:]
         init_txt.append(f'{parent.__name__}.__init__(self, '
-                        f'{", ".join(param for param in parent_annotations.keys())})')
+                        f'{", ".join(param for param in parent_variables)})')
 
     # Init variables
     for name, (annotation, default_value) in attributes.items():
         init_var_code = _init_var(name, annotation, globals, default_value)
         init_txt.extend(init_var_code)
-        init_parameters.append(f'{name} = None')
+        init_kwargs.append(f'{name} = None')
 
-    return _create_fn('__init__', init_parameters, init_txt or ['pass'], globals)
+    return _create_fn('__init__', init_args + init_kwargs, init_txt or ['pass'], globals)
 
 def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
@@ -382,27 +390,14 @@ def _process_class(cls):
         value = getattr(cls, attr_name) if hasattr(cls, attr_name) else None
         binary_attrs[attr_name] = (annotation, value)
 
-    eq_fn           = _create_equal_fn(annotations, globals, binary_struct_bases)
-    str_fn          = _create_string_fn(annotations, globals, binary_struct_bases)
-    init_fn         = _create_init_fn(binary_attrs, globals, binary_struct_bases)
-    bytes_fn        = _create_bytes_fn(annotations, globals, binary_struct_bases)
-    size_fn         = _create_size_fn(annotations, globals, binary_struct_bases)
-    deserialize_fn  = _create_deserialize_fn(annotations, globals, binary_struct_bases)
-
-    # BinaryStruct Inherits from each BinaryStruct subclass of cls
+    # Add generated functions
     generated_fns = {
-        '__eq__':               eq_fn,
-        '__str__':              str_fn,
-        '__init__':             init_fn,
-        '__bytes__':            bytes_fn,
-        '_bs_size':             size_fn,
-        'deserialize':          deserialize_fn,
-    }
-
-    other_attrs = {
-        '_init_binary_field':   _init_binary_field,
-        'size_in_bytes':        property(size_fn),
-        f'_{cls.__name__}__is_binary_struct':   True
+        '__eq__':       _create_equal_fn(annotations, globals, binary_struct_bases),
+        '__str__':      _create_string_fn(annotations, globals, binary_struct_bases),
+        '__init__':     _create_init_fn(binary_attrs, globals, binary_struct_bases),
+        '__bytes__':    _create_bytes_fn(annotations, globals, binary_struct_bases),
+        '_bs_size':     _create_size_fn(annotations, globals, binary_struct_bases),
+        'deserialize':  _create_deserialize_fn(annotations, globals, binary_struct_bases),
     }
 
     new_cls_dict = cls.__dict__.copy()
@@ -411,7 +406,15 @@ def _process_class(cls):
         assert new_fn_name not in new_cls_dict, 'Illegal name used for function'
         new_cls_dict[new_fn_name] = fn
 
-    new_cls_dict.update(other_attrs)
+    # Add other attributes
+    other_attrs = {
+        '_init_binary_field':   _init_binary_field,
+        'size_in_bytes':        property(generated_fns['_bs_size']),
+        f'_{cls.__name__}__is_binary_struct':   True
+    }
+
+    other_attrs.update(new_cls_dict)
+    new_cls_dict = other_attrs
 
     cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
     if not issubclass(cls, BinaryField):
