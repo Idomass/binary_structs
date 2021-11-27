@@ -1,6 +1,7 @@
 import pytest
+import random
 
-from utils.binary_field import uint8_t, int8_t, int16_t, uint16_t, \
+from utils.binary_field import BinaryField, uint8_t, int8_t, int16_t, uint16_t, \
                                int32_t, uint32_t, int64_t, uint64_t, \
                                be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,\
                                be_int32_t, be_uint32_t, be_int64_t, be_uint64_t
@@ -86,3 +87,38 @@ def test_eq_operator(underlying_type, default_value, size, buf):
     assert a == b
     assert a == default_value
     assert a != default_value + 1
+
+# Bitwise tests
+bw_op = ['__and__', '__xor__', '__or__']
+fields = [uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t, int64_t,
+          be_uint8_t, be_uint16_t, be_uint32_t, be_uint64_t, be_int8_t, be_int16_t,
+          be_int32_t, be_int64_t]
+two_operands_list = [(kind1, kind2, op) for kind1 in fields for kind2 in fields for op in bw_op]
+
+def _get_random_bytes_buffer(size, max_size):
+    return bytes([random.randint(0x0, 0xff) for _ in range(size)]) + b'\x00' * (max_size - size)
+
+@pytest.mark.parametrize('field_type', fields)
+def test_bitwise_not(field_type):
+    num = field_type()
+    buf = _get_random_bytes_buffer(num.size_in_bytes, num.size_in_bytes)
+    num.deserialize(buf)
+
+    assert ~num == bytes(~x & 0xff for x in buf)
+
+@pytest.mark.parametrize('type1, type2, operand', two_operands_list)
+def test_bitwise_operator2(type1, type2, operand):
+    num1 = type1()
+    num2 = type2()
+
+    bigger_num_size = max(num1.size_in_bytes, num2.size_in_bytes)
+    buf1 = _get_random_bytes_buffer(num1.size_in_bytes, bigger_num_size)
+    buf2 = _get_random_bytes_buffer(num2.size_in_bytes, bigger_num_size)
+
+    num1.deserialize(buf1[:num1.size_in_bytes])
+    num2.deserialize(buf2[:num2.size_in_bytes])
+
+    bitwised_buf = bytes(getattr(int, operand)(a, b) for (a, b) in zip(buf1, buf2))
+
+    assert getattr(BinaryField, operand)(num1, num2) == getattr(BinaryField, operand)(num2, num1)
+    assert bitwised_buf == getattr(BinaryField, operand)(num1, num2)

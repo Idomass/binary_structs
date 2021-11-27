@@ -56,6 +56,31 @@ class BinaryField:
     def size_in_bytes(self):
         pass
 
+    @staticmethod
+    def __bitwise_operation(op1, op2, operation) -> bytes:
+        op1_bytes  = bytes(op1)
+        op2_bytes = bytes(op2)
+
+        bigger_buf_len = max(len(op1_bytes), len(op2_bytes))
+
+        op1_bytes  += b'\x00' * (bigger_buf_len - len(op1_bytes))
+        op2_bytes += b'\x00' * (bigger_buf_len - len(op2_bytes))
+
+        return bytes(getattr(int, operation)(a, b) for (a, b) in zip(op1_bytes, op2_bytes))
+
+    def __and__(self, other) -> bytes:
+        return BinaryField.__bitwise_operation(self, other, '__and__')
+
+    def __or__(self, other) -> bytes:
+        return BinaryField.__bitwise_operation(self, other, '__or__')
+
+    def __xor__(self, other) -> bytes:
+        return BinaryField.__bitwise_operation(self, other, '__xor__')
+
+    def __invert__(self) -> bytes:
+        return bytes(~x & 0xff for x in bytes(self))
+
+
 class PrimitiveTypeField(BinaryField):
     """
     Designed for primitive ctypes types, implements BinaryField
