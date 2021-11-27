@@ -66,6 +66,15 @@ def _insert_type_to_globals(kind: type, globals: dict) -> str:
 
     return name
 
+def _insert_bases_to_globals(cls: type, globals: dict):
+    """
+    Insert all of the class bases that are going to be used
+    in the generated functions into the globals dict
+    """
+
+    for parent in cls.__bases__:
+        _insert_type_to_globals(parent, globals)
+
 def _get_annotations_recursively(cls: type) -> OrderedDict:
     """
     Returns a dictionary of annotations recuresively for each binary struct
@@ -177,6 +186,9 @@ def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
 
     # Init parent classes if they are binary fields
     for parent in bases:
+        if not _is_parent_fn_callable(parent, '__init__'):
+            continue
+
         for param in inspect.signature(parent.__init__).parameters.values():
             if param.name == 'self':
                 continue
@@ -208,6 +220,9 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
     lines = ['buf = b""']
 
     for parent in bases:
+        if not _is_parent_fn_callable(parent, '__bytes__'):
+            continue
+
         lines += [f'buf += {parent.__name__}.__bytes__(self)']
 
     # For class attributes
@@ -229,8 +244,11 @@ def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
         '    return False'
     ]
 
-    for base in bases:
-        lines.append(f'if not {base.__name__}.__eq__(self, other):')
+    for parent in bases:
+        if not _is_parent_fn_callable(parent, '__eq__'):
+            continue
+
+        lines.append(f'if not {parent.__name__}.__eq__(self, other):')
         lines.append(f'    return False')
 
     for name in attributes.keys():
@@ -249,6 +267,9 @@ def _create_string_fn(attributes: dict, globals: dict, bases: tuple[type]) -> st
 
     # Add bases
     for parent in bases:
+        if not _is_parent_fn_callable(parent, '__str__'):
+            continue
+
         lines += [f'parent_str = "\\n    " + "\\n    ".join('
                   f'line for line in {parent.__name__}.__str__(self).split("\\n"))']
         lines += [f'string += f"{parent.__name__}: {{parent_str}}\\n"']
@@ -273,6 +294,9 @@ def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) 
 
     # For this class bases
     for parent in bases:
+        if not _is_parent_fn_callable(parent, 'deserialize'):
+            continue
+
         lines.append(f'{parent.__name__}.deserialize(self, buf)')
         lines.append(f'buf = buf[{parent.__name__}._bs_size(self):]')
 
@@ -299,6 +323,9 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
 
     # Add bases
     for parent in bases:
+        if not _is_parent_fn_callable(parent, '_bs_size'):
+            continue
+
         lines += [f'counter += {parent.__name__}._bs_size(self)']
 
     # Add class variables
@@ -316,22 +343,8 @@ def _is_binary_struct(cls: type):
 
     return issubclass(cls, BinaryField) and getattr(cls, f'_{cls.__name__}__is_binary_struct', False) == True
 
-def _filter_valid_bases(cls, globals: dict) -> tuple[type]:
-    """
-    Returns every valid BinaryStruct base in class.
-    """
-
-    bases_list = []
-    for parent in cls.__bases__:
-        if _is_binary_struct(parent):
-            _insert_type_to_globals(parent, globals)
-            bases_list.append(parent)
-
-        elif issubclass(parent, BinaryField):
-            # One of the parents is a binary struct
-            bases_list.extend(_filter_valid_bases(parent, globals))
-
-    return tuple(bases_list)
+def _is_parent_fn_callable(parent: type, fn_name: str):
+    return parent.__name__ != 'BinaryField' and inspect.isfunction(getattr(parent, fn_name, None))
 
 def _set_nested_classes_as_attributes(cls):
     """
@@ -371,22 +384,22 @@ def _process_class(cls):
         cls = type(cls.__name__, cls_bases, dict(cls.__dict__))
 
     # These will be used for creating the new class
-    binary_struct_bases = _filter_valid_bases(cls, globals)
-    logging.debug(f'Found binary bases: {binary_struct_bases}')
-
+    # They are the same as annotations, but they contain the default value too
     binary_attrs = OrderedDict()
     for attr_name, annotation in annotations.items():
         value = getattr(cls, attr_name) if hasattr(cls, attr_name) else None
         binary_attrs[attr_name] = (annotation, value)
 
+    _insert_bases_to_globals(cls, globals)
+
     # Add generated functions
     generated_fns = {
-        '__eq__':       _create_equal_fn(annotations, globals, binary_struct_bases),
-        '__str__':      _create_string_fn(annotations, globals, binary_struct_bases),
-        '__init__':     _create_init_fn(binary_attrs, globals, binary_struct_bases),
-        '__bytes__':    _create_bytes_fn(annotations, globals, binary_struct_bases),
-        '_bs_size':     _create_size_fn(annotations, globals, binary_struct_bases),
-        'deserialize':  _create_deserialize_fn(annotations, globals, binary_struct_bases),
+        '__eq__':       _create_equal_fn(annotations, globals, cls.__bases__),
+        '__str__':      _create_string_fn(annotations, globals, cls.__bases__),
+        '__init__':     _create_init_fn(binary_attrs, globals, cls.__bases__),
+        '__bytes__':    _create_bytes_fn(annotations, globals, cls.__bases__),
+        '_bs_size':     _create_size_fn(annotations, globals, cls.__bases__),
+        'deserialize':  _create_deserialize_fn(annotations, globals, cls.__bases__),
     }
 
     for name, fn in generated_fns.items():

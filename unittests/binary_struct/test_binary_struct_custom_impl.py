@@ -128,11 +128,11 @@ def test_valid_class_multiple_inheritence_custom_implementation(decorator):
         c: uint8_t = 0
 
         def __bytes__(self):
-            return b'C' + self.C__bytes__() + super(type(self), self).__bytes__()
+            return b'C' + self.C__bytes__()
 
     cls = decorator(C)
 
-    assert bytes(cls()) == b'CA\xff\x00B'
+    assert bytes(cls()) == b'CBA\xff\x00'
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_custom_implementation_size_property(decorator):
@@ -148,3 +148,24 @@ def test_valid_class_custom_implementation_size_property(decorator):
     a = cls(range(7))
 
     assert a.size_in_bytes == 12
+
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_mixed_chain(decorator):
+    @binary_struct
+    class A:
+        a: uint8_t
+
+    class B(A):
+        def __init__(self, a):
+            # This is required for now
+            A.__init__(self, a * 5)
+
+    @binary_struct
+    class C(B):
+        b: uint8_t
+
+    cls = decorator(C)
+    c = cls(1, 2)
+
+    assert c.a.value == 5
+    assert c.b.value == 2

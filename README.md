@@ -249,7 +249,7 @@ The nested fields issue have now 2 elegant solutions:
 - [X] Test coverage for `little_endian`
 - [X] Caching support
 - [ ] Hashing support
-- [ ] More test cases for inheritence
+- [X] More test cases for inheritence
 - [X] Add `__eq__` operator
 - [ ] Use sphinx docs
 - [ ] Add `+` operator between `binary_struct`
@@ -260,3 +260,4 @@ The nested fields issue have now 2 elegant solutions:
 - [ ] Add support for factory classes
 - [X] Add `__str__` and `__repr__`
 - [ ] A `@binary_union` decorator
+- [ ] Lint the code
