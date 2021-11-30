@@ -111,7 +111,7 @@ class PrimitiveTypeField(BinaryField):
         endianness = "be" if ">" in self.FORMAT else Endianness.HOST.value
         sign = "u" if self.FORMAT.isupper() else 'i'
 
-        return f'{endianness}_{sign}{self.size_in_bytes * 8}(0x{self.value:02X})'
+        return f'{endianness}_{sign}{self.size_in_bytes * 8}(0x{(self.value & 0xff):02X})'
 
     def __bytes__(self) -> bytes:
         return struct.pack(self.FORMAT, self.value)

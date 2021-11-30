@@ -1,4 +1,4 @@
-# Binary Structs (OUTDATED)
+# Binary Structs
 ## General
 The main idea behind BinaryStruct, is to have a pythonic and easy way to work with binary data.
 
@@ -126,12 +126,12 @@ class BufferWithSize:
     data: [uint8_t, 8]
 
     def __bytes__(self):
-        return b'Hello world' + super(type(self), self).__bytes__()
+        return b'Hello world' + self.BufferWithSize__bytes__()
 ```
 This implementation will greet the user before giving him the serialized data, VERY useful.
 
-Note that we used super, and for some reason it worked. This is thanks to the (probably) over complex implementation of
-BinaryStruct
+Note that we used `BufferWithSize__bytes` in order to call the generated function. If a function is redefined in
+the class decleration, the generated function will have the class name added as a prefix to its name.
 
 ## Implementation
 ### Abstract
@@ -140,40 +140,8 @@ The generated code will be created for `BinaryStruct`, and the original class wi
 with a new parent class.
 
 ### BinaryField
-`BinaryField` is the interface that allows classes to be used inside a `@binary_struct` class.
-Each field must have a `size_in_bytes` attribute, an `__bytes__` function and a `deserialize(buf)` function.
-
-BinaryField has a sub-type, named `PrimitiveTypeField` which implement these function for `ctypes`.
-So the primitive types we already used are a `BinaryField` as well.
-
-### Example
-This decleration that we already saw:
-```python
-class BufferWithSize:
-    size: uint32_t
-    data: [uint8_t, 8]
-```
-
-Will generate the following class:
-```python
-class BinaryStruct(BinaryField):
-    def __init__(self, size = uint32_t(), data = []):
-        # Generated code
-        pass
-
-    def __bytes__(self):
-        # More generated code
-        pass
-
-    def deserialize(self, buf):
-        # Even more generated code
-        pass
-
-class BufferWithSize(BinaryStruct):
-    pass
-```
-`BinaryStruct` is not added to the global variables, so you don't need to worry about referencing it.
-This is necessary for allowing the `super()` syntax, and for keeping the original class intact.
+Each field that is being used in a `BinaryStruct` must inherit from `BinaryField` class, and each class that is being processed
+by `@binary_struct` decorator will have `BinaryField` added to its inheritence tree.
 
 ### TypedBuffer and BinaryBuffer
 When using the buffer syntax (`data: [uint8_t, 32]` or `data: [uint8_t]`), the decorator will create an instance for
@@ -195,7 +163,7 @@ the regular `super()`. This happens because when the code is first executed, the
 #### Suggested solution
 One suggested solution is re-building all the classes function, it might help fixing the super problem
 
-### Endianness conversion [SOLVED!]
+### Endianness conversion [WIP]
 Endianness converstion had 2 main issues:
 - A horrible amount of overhead was added:
 
@@ -229,6 +197,7 @@ Endianness converstion had 2 main issues:
 
 #### Applied solution
 As suggested, a caching system was added to handle the overhead, and performence skyrocketed since starting to use it.
+Unfortunately, this got very complex after implementing default value support.
 
 The nested fields issue have now 2 elegant solutions:
 - Referencing using the `BinaryStruct`:
@@ -241,22 +210,26 @@ The nested fields issue have now 2 elegant solutions:
     a = Nested(base=[5], 3)
     ```
 
-## WIP/TODO Features
-- [ ] Update README
+## Done Tasks
 - [X] Minimize class copying
 - [X] Full default value support
 - [X] Full Deserialization support
 - [X] Test coverage for `little_endian`
 - [X] Caching support
-- [ ] Hashing support
 - [X] More test cases for inheritence
 - [X] Add `__eq__` operator
+- [X] Add default values
+- [X] Bitwise operations
+- [X] Add `__str__` and `__repr__`
+
+## WIP/TODO Features
+- [ ] Github actions support
+- [ ] Convertions support (`.h` files, `.so`, `ctypes`)
+- [ ] Make the struct sequential in memory
+- [ ] Hashing support
 - [ ] Use sphinx docs
 - [ ] Add `/` operator between `binary_struct` instances
-- [X] Add default values
 - [ ] Add control over individual fields
-- [X] Bitwise operations
 - [ ] Add support for factory classes
-- [X] Add `__str__` and `__repr__`
 - [ ] A `@binary_union` decorator
 - [ ] Lint the code

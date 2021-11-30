@@ -8,8 +8,7 @@ from binary_struct import binary_struct
 from endianness import big_endian, little_endian
 
 
-# TODO
-@pytest.mark.skip(reason='Cant figure a way to pass it for now')
+@pytest.mark.skip(reason='#TODO Cant figure a way to pass it for now')
 def test_valid_copy_ctor(BufferClassFixture):
     a = BufferClassFixture(5, range(5))
     b = deepcopy(a)

@@ -270,9 +270,7 @@ def _create_string_fn(attributes: dict, globals: dict, bases: tuple[type]) -> st
         if not _is_parent_fn_callable(parent, '__str__'):
             continue
 
-        lines += [f'parent_str = "\\n    " + "\\n    ".join('
-                  f'line for line in {parent.__name__}.__str__(self).split("\\n"))']
-        lines += [f'string += f"{parent.__name__}: {{parent_str}}\\n"']
+        lines += [f'string += {parent.__name__}.__str__(self)']
 
     # Add class variables
     for attr in attributes.keys():
