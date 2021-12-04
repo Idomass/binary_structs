@@ -12,11 +12,10 @@ class BufferWithSize:
 """
 
 import sys
-import random
 import logging
 import inspect
 
-from utils.binary_field import BinaryField, PrimitiveTypeField
+from utils.binary_field import BinaryField
 from utils.buffers.binary_buffer import BinaryBuffer
 from utils.buffers.typed_buffer import TypedBuffer
 
@@ -55,6 +54,7 @@ def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], 
 
     return ns[name]
 
+
 def _insert_type_to_globals(kind: type, globals: dict) -> str:
     """
     Inserts the given type into the namespace
@@ -66,6 +66,7 @@ def _insert_type_to_globals(kind: type, globals: dict) -> str:
 
     return name
 
+
 def _insert_bases_to_globals(cls: type, globals: dict):
     """
     Insert all of the class bases that are going to be used
@@ -74,6 +75,7 @@ def _insert_bases_to_globals(cls: type, globals: dict):
 
     for parent in cls.__bases__:
         _insert_type_to_globals(parent, globals)
+
 
 def _get_annotations_recursively(cls: type) -> OrderedDict:
     """
@@ -90,6 +92,7 @@ def _get_annotations_recursively(cls: type) -> OrderedDict:
         annotations.update(cls.__dict__.get('__annotations__', {}).copy())
 
     return annotations
+
 
 def _get_annotation_type(annotation) -> AnnotationType:
     """
@@ -109,6 +112,7 @@ def _get_annotation_type(annotation) -> AnnotationType:
 
     else:
         return AnnotationType.OTHER
+
 
 def _init_binary_field(self: type, field_name: str, field_type: BinaryField, field_value):
     """
@@ -136,6 +140,7 @@ def _init_binary_field(self: type, field_name: str, field_type: BinaryField, fie
     else:
         setattr(self, field_name, field_type(field_value))
 
+
 def _init_var(name: str, annotation, globals: dict, default_value: type) -> list[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
@@ -154,24 +159,28 @@ def _init_var(name: str, annotation, globals: dict, default_value: type) -> list
         annotation, size = annotation
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = BinaryBuffer({type_name}, {size}, {name} or {name}_default_value or [])']
+        init_var = [f'self.{name} = BinaryBuffer({type_name}, {size}, '
+                                               f'{name} or {name}_default_value or [])']
 
     elif annotation_type == AnnotationType.TYPED_BUFFER:
         annotation = annotation[0]
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = TypedBuffer({type_name}, {name} or {name}_default_value or [])']
+        init_var = [f'self.{name} = TypedBuffer({type_name}, '
+                                              f'{name} or {name}_default_value or [])']
 
     elif annotation_type == AnnotationType.OTHER:
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self._init_binary_field("{name}", {type_name}, {name} or {name}_default_value)']
+        init_var = [f'self._init_binary_field("{name}", {type_name}, '
+                                             f'{name} or {name}_default_value)']
 
     # Make sure annotation implements BinaryField
     if not issubclass(annotation, BinaryField):
         raise TypeError('All fields must implement BinaryField!')
 
     return init_var
+
 
 def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
@@ -211,6 +220,7 @@ def _create_init_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
 
     return _create_fn('__init__', init_args + init_kwargs, init_txt or ['pass'], globals)
 
+
 def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Create bytes function and return it.
@@ -232,6 +242,7 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
     lines += ['return buf']
 
     return _create_fn('__bytes__', ['self'], lines, globals)
+
 
 def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
@@ -258,6 +269,7 @@ def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
 
     return _create_fn('__eq__', ['self, other'], lines, globals)
 
+
 def _create_string_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Create a function that converts the struct into a string, for visual purposes
@@ -281,6 +293,7 @@ def _create_string_fn(attributes: dict, globals: dict, bases: tuple[type]) -> st
     lines += ['return string']
 
     return _create_fn('__str__', ['self'], lines, globals)
+
 
 def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
@@ -311,6 +324,7 @@ def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) 
 
     return _create_fn('deserialize', ['self, buf'], lines + ['return self'], globals)
 
+
 def _create_size_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
     """
     Generates the size property and returns the function as a string
@@ -334,6 +348,7 @@ def _create_size_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
 
     return _create_fn('_bs_size', ['self'], lines, globals)
 
+
 def _is_binary_struct(cls: type):
     """
     Returns if the given class is a binary struct
@@ -341,8 +356,10 @@ def _is_binary_struct(cls: type):
 
     return issubclass(cls, BinaryField) and getattr(cls, f'_{cls.__name__}__is_binary_struct', False) == True
 
+
 def _is_parent_fn_callable(parent: type, fn_name: str):
     return parent.__name__ != 'BinaryField' and inspect.isfunction(getattr(parent, fn_name, None))
+
 
 def _set_nested_classes_as_attributes(cls):
     """
@@ -358,6 +375,7 @@ def _set_nested_classes_as_attributes(cls):
             raise AttributeError(f'Cannot set binary struct attribute to {new_attr_name}')
 
         setattr(cls, new_attr_name, attr_type)
+
 
 def _process_class(cls):
     """
@@ -419,6 +437,7 @@ def _process_class(cls):
     _set_nested_classes_as_attributes(cls)
 
     return cls
+
 
 def binary_struct(cls: type = None):
     """

@@ -37,7 +37,8 @@ class TypedBuffer(list, BinaryField):
             return self._underlying_type(element)
 
         except [ValueError, TypeError]:
-            raise TypeError(f'Trying to add an element of {type(element)} to buffer of {self._underlying_type}\'s')
+            raise TypeError('Trying to add an element of '
+                            f'{type(element)} to buffer of {self._underlying_type}\'s')
 
     def deserialize(self, buf: bytes, size: int = -1):
         """

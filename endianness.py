@@ -35,6 +35,7 @@ def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: End
 
     return new_kind
 
+
 def _convert_class_annotations_endianness(cls, endianness: Endianness):
     """
     Replace class annotations with the fitting endianness annotations
@@ -63,6 +64,7 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
         else:
             annotations[annotation_name] = new_kind
 
+
 def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: Endianness):
     """
     Convert the endianness of a single class to the given endianness.
@@ -85,6 +87,7 @@ def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: En
     _convert_class_annotations_endianness(cls, endianness)
 
     return binary_struct(cls)
+
 
 def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     """
@@ -117,12 +120,14 @@ def endian_decorator(cls, endianness: Endianness):
 
     return wrap(cls)
 
+
 def little_endian(cls: BinaryField = None):
     """
     Convert a BinaryField class to little_endian
     """
 
     return endian_decorator(cls, Endianness.LITTLE)
+
 
 def big_endian(cls: BinaryField = None):
     """

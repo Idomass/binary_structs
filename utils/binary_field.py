@@ -58,12 +58,12 @@ class BinaryField:
 
     @staticmethod
     def __bitwise_operation(op1, op2, operation) -> bytes:
-        op1_bytes  = bytes(op1)
+        op1_bytes = bytes(op1)
         op2_bytes = bytes(op2)
 
         bigger_buf_len = max(len(op1_bytes), len(op2_bytes))
 
-        op1_bytes  += b'\x00' * (bigger_buf_len - len(op1_bytes))
+        op1_bytes += b'\x00' * (bigger_buf_len - len(op1_bytes))
         op2_bytes += b'\x00' * (bigger_buf_len - len(op2_bytes))
 
         return bytes(getattr(int, operation)(a, b) for (a, b) in zip(op1_bytes, op2_bytes))
@@ -116,29 +116,38 @@ class PrimitiveTypeField(BinaryField):
     def __bytes__(self) -> bytes:
         return struct.pack(self.FORMAT, self.value)
 
+
 class int8_t(ctypes.c_int8, PrimitiveTypeField):
     FORMAT = 'b'
+
 
 class uint8_t(ctypes.c_uint8, PrimitiveTypeField):
     FORMAT = 'B'
 
+
 class int16_t(ctypes.c_int16, PrimitiveTypeField):
     FORMAT = 'h'
+
 
 class uint16_t(ctypes.c_uint16, PrimitiveTypeField):
     FORMAT = 'H'
 
+
 class int32_t(ctypes.c_int32, PrimitiveTypeField):
     FORMAT = 'i'
+
 
 class uint32_t(ctypes.c_uint32, PrimitiveTypeField):
     FORMAT = 'I'
 
+
 class int64_t(ctypes.c_int64, PrimitiveTypeField):
     FORMAT = 'q'
 
+
 class uint64_t(ctypes.c_uint64, PrimitiveTypeField):
     FORMAT = 'Q'
+
 
 def big_endian_field(cls=None):
     """
@@ -154,33 +163,41 @@ def big_endian_field(cls=None):
 
     return wrap(cls)
 
+
 @big_endian_field
 class be_int8_t(int8_t):
     pass
+
 
 @big_endian_field
 class be_uint8_t(uint8_t):
     pass
 
+
 @big_endian_field
 class be_int16_t(int16_t):
     pass
+
 
 @big_endian_field
 class be_uint16_t(uint16_t):
     pass
 
+
 @big_endian_field
 class be_int32_t(int32_t):
     pass
+
 
 @big_endian_field
 class be_uint32_t(uint32_t):
     pass
 
+
 @big_endian_field
 class be_int64_t(int64_t):
     pass
+
 
 @big_endian_field
 class be_uint64_t(uint64_t):
