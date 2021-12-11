@@ -233,3 +233,4 @@ The nested fields issue have now 2 elegant solutions:
 - [ ] Add support for factory classes
 - [ ] A `@binary_union` decorator
 - [ ] Lint the code
+- [ ] Spell inheritance correctly

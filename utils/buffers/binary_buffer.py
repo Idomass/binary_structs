@@ -3,8 +3,8 @@ This file implements BinaryBuffer: a list with a type and a maximum size.
 It is used by the binary_struct class instead of lists.
 """
 
-from utils.binary_field import BinaryField
-from utils.buffers.typed_buffer import TypedBuffer
+from binary_structs.utils.binary_field import BinaryField
+from binary_structs.utils.buffers.typed_buffer import TypedBuffer
 
 
 class MaxSizeExceededError(Exception):

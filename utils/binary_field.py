@@ -35,6 +35,8 @@ class BinaryField:
     instead, use the binary_struct decorator
     """
 
+    BINARY_FIELD = True
+
     @abstractmethod
     def deserialize(self, buffer):
         pass
@@ -86,6 +88,8 @@ class PrimitiveTypeField(BinaryField):
     Designed for primitive ctypes types, implements BinaryField
     """
 
+    PRIMITIVE_FIELD = True
+
     def deserialize(self, buffer):
         if len(buffer) < self.size_in_bytes:
             raise ValueError('Given buffer is too small!')
@@ -100,7 +104,7 @@ class PrimitiveTypeField(BinaryField):
         if isinstance(number, int):
             return self.value == number
 
-        elif isinstance(number, PrimitiveTypeField):
+        elif getattr(number, 'PRIMITIVE_FIELD', False):
             return self.value == number.value
 
         else:

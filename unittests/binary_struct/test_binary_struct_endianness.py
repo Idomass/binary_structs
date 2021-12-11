@@ -1,8 +1,6 @@
 import pytest
 
-from utils.binary_field import *
-from binary_struct import binary_struct
-from endianness import big_endian, little_endian
+from binary_structs import *
 
 
 # Initialization testing

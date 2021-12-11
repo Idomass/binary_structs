@@ -1,7 +1,6 @@
 import pytest
 
-from utils.binary_field import uint32_t, uint8_t
-from utils.buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
+from binary_structs import uint32_t, uint8_t, BinaryBuffer, MaxSizeExceededError
 
 
 def test_valid_init():

@@ -1,7 +1,6 @@
 import pytest
 
-from utils.binary_field import uint8_t
-from binary_struct import binary_struct
+from binary_structs import binary_struct, uint8_t
 from conftest import available_decorators
 
 

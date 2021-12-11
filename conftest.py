@@ -1,9 +1,7 @@
 import pytest
 
-from endianness import big_endian, little_endian
-from utils.binary_field import uint8_t, uint32_t
-from utils.buffers.typed_buffer import TypedBuffer
-from binary_struct import binary_struct, _process_class
+from binary_structs import binary_struct, big_endian, little_endian,    \
+                           uint8_t, uint32_t, TypedBuffer
 
 # misc
 def empty_decorator(cls):

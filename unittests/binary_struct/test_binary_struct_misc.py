@@ -3,9 +3,7 @@ import pytest
 from copy import deepcopy
 from conftest import EmptyClass, empty_decorator, test_structs
 
-from utils.binary_field import uint8_t
-from binary_struct import binary_struct
-from endianness import big_endian, little_endian
+from binary_structs import binary_struct, big_endian, little_endian, uint8_t
 
 
 @pytest.mark.skip(reason='#TODO Cant figure a way to pass it for now')

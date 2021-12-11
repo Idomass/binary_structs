@@ -1,9 +1,7 @@
 import pytest
 
 from conftest import default_structs
-from binary_struct import binary_struct
-from utils.binary_field import uint32_t, uint8_t
-from utils.buffers.binary_buffer import MaxSizeExceededError
+from binary_structs import binary_struct, uint32_t, uint8_t, MaxSizeExceededError
 
 
 def test_empty_class(EmptyClassFixture):

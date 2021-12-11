@@ -1,10 +1,10 @@
 import pytest
 import random
 
-from utils.binary_field import BinaryField, uint8_t, int8_t, int16_t, uint16_t, \
-                               int32_t, uint32_t, int64_t, uint64_t, \
-                               be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,\
-                               be_int32_t, be_uint32_t, be_int64_t, be_uint64_t
+from binary_structs import BinaryField, uint8_t, int8_t, int16_t, uint16_t, \
+                           int32_t, uint32_t, int64_t, uint64_t,            \
+                           be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,  \
+                           be_int32_t, be_uint32_t, be_int64_t, be_uint64_t
 
 
 # tests are catograized to:
@@ -78,6 +78,12 @@ def test_two_default_ctors_instances_are_different(underlying_type, default_valu
     b = underlying_type()
 
     assert a is not b
+
+@pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
+def test_eq_operator_self(underlying_type, default_value, size, buf):
+    a = underlying_type(default_value)
+
+    assert a == a
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_eq_operator(underlying_type, default_value, size, buf):
