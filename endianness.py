@@ -6,7 +6,7 @@ They are used to convert a BinaryStruct endiannes
 import logging
 
 from copy import deepcopy
-from binary_structs.utils.binary_field import *
+from binary_structs.utils import *
 from binary_structs.binary_struct import binary_struct, _is_binary_struct
 
 
@@ -48,10 +48,10 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
     for annotation_name, annotation_type in annotations.items():
         kind = annotation_type[0] if isinstance(annotation_type, list) else annotation_type
 
-        if getattr(kind, 'PRIMITIVE_FIELD', False):
+        if issubclass(kind, PrimitiveTypeField):
             new_kind = _convert_primitive_type_endianness(kind, endianness)
 
-        elif getattr(kind, 'BINARY_FIELD', False):
+        elif issubclass(kind, BinaryField):
             new_kind = _convert_parents_classes(kind, endianness)
 
         else:
@@ -99,7 +99,7 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
 
     new_bases = []
     for base in cls.__bases__:
-        if getattr(base, 'BINARY_FIELD', False):
+        if issubclass(base, BinaryField):
             new_bases.append(_convert_parents_classes(base, endianness))
 
         else:

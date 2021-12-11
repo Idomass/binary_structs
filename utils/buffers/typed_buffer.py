@@ -14,7 +14,7 @@ class TypedBuffer(list, BinaryField):
     """
 
     def __init__(self, underlying_type: BinaryField, buf: list = []):
-        if not getattr(underlying_type, 'BINARY_FIELD', False):
+        if not issubclass(underlying_type, BinaryField):
             raise TypeError('Field must implement BinaryField interface!')
 
         self._underlying_type = underlying_type

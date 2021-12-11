@@ -15,9 +15,7 @@ import sys
 import logging
 import inspect
 
-from binary_structs.utils.binary_field import BinaryField
-from binary_structs.utils.buffers.binary_buffer import BinaryBuffer
-from binary_structs.utils.buffers.typed_buffer import TypedBuffer
+from binary_structs.utils import BinaryField, BinaryBuffer, TypedBuffer
 
 from enum import Enum
 from collections import OrderedDict
@@ -176,7 +174,7 @@ def _init_var(name: str, annotation, globals: dict, default_value: type) -> list
                                              f'{name} or {name}_default_value)']
 
     # Make sure annotation implements BinaryField
-    if not getattr(annotation, 'BINARY_FIELD', False):
+    if not issubclass(annotation, BinaryField):
         raise TypeError('All fields must implement BinaryField!')
 
     return init_var
@@ -354,7 +352,7 @@ def _is_binary_struct(cls: type):
     Returns if the given class is a binary struct
     """
 
-    return getattr(cls, 'BINARY_FIELD', False) and getattr(cls, f'_{cls.__name__}__is_binary_struct', False) == True
+    return issubclass(cls, BinaryField) and getattr(cls, f'_{cls.__name__}__is_binary_struct', False) == True
 
 
 def _is_parent_fn_callable(parent: type, fn_name: str):
@@ -394,7 +392,7 @@ def _process_class(cls):
     logging.debug(f'Found annotations: {annotations}')
 
     # Make sure the created class is a subclass of BinaryField
-    if not getattr(cls, 'BINARY_FIELD', False):
+    if not issubclass(cls, BinaryField):
         cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
         cls_bases += (BinaryField,)
         cls = type(cls.__name__, cls_bases, dict(cls.__dict__))
