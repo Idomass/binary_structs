@@ -1,0 +1,21 @@
+[tool.binary_structs]
+name = "binary_structs"
+version = "1.0.0"
+description = "A python library for binary structs"
+authors = [
+    "Ido Masubi <idomass@github.com>"
+]
+readme = "README.md"
+python = "^3.9.5"
+homepage = "https://github.com/Idomass/binary_structs"
+repository = "https://github.com/Idomass/binary_structs"
+documentation = "https://github.com/Idomass/binary_structs"
+keywords = ["structs", "ctypes", "binary", "serialization", "deserialization"]
+excludes = ["bs_venv", "unittests"]
+
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"

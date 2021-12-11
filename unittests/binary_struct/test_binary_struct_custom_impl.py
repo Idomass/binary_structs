@@ -6,7 +6,7 @@ from conftest import available_decorators
 
 decorators_without_format = [decorator[0] for decorator in available_decorators]
 
-def test_valid_class_custom_fn_implementation_multiple_inheritence():
+def test_valid_class_custom_fn_implementation_multiple_inheritance():
     class B:
         def foo(self):
             return True
@@ -38,7 +38,7 @@ def test_valid_class_custom_implementation_init(decorator):
     assert a.times_two.value == 10
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
-def test_valid_class_custom_implementation_init_with_inheritence(decorator):
+def test_valid_class_custom_implementation_init_with_inheritance(decorator):
     @binary_struct
     class A:
         a: uint8_t
@@ -61,7 +61,7 @@ def test_valid_class_custom_implementation_init_with_inheritence(decorator):
     assert b.b.value == 16
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
-def test_valid_class_custom_implementation_init_with_multiple_inheritence(decorator):
+def test_valid_class_custom_implementation_init_with_multiple_inheritance(decorator):
     @binary_struct
     class A:
         a: uint8_t
@@ -97,7 +97,7 @@ def test_valid_class_custom_implementation_init_with_multiple_inheritence(decora
     assert c.msg3 == "Ok"
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
-def test_valid_class_inheritence_custom_implementation(BufferClassFixture, decorator):
+def test_valid_class_inheritance_custom_implementation(BufferClassFixture, decorator):
     @binary_struct
     class BiggerBuffer(BufferClassFixture):
         def __init__(self, size, buffer):
@@ -110,7 +110,7 @@ def test_valid_class_inheritence_custom_implementation(BufferClassFixture, decor
     assert a.buf == list(range(3)) * 2 + [0] * 26
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
-def test_valid_class_multiple_inheritence_custom_implementation(decorator):
+def test_valid_class_multiple_inheritance_custom_implementation(decorator):
     @binary_struct
     class A:
         a: uint8_t = 0xff

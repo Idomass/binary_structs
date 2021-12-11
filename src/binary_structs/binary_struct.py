@@ -78,7 +78,7 @@ def _insert_bases_to_globals(cls: type, globals: dict):
 def _get_annotations_recursively(cls: type) -> OrderedDict:
     """
     Returns a dictionary of annotations recuresively for each binary struct
-    Used for inheritence tree when multiple layers of annotations are available
+    Used for inheritance tree when multiple layers of annotations are available
     """
 
     annotations = OrderedDict()

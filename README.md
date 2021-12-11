@@ -141,7 +141,7 @@ with a new parent class.
 
 ### BinaryField
 Each field that is being used in a `BinaryStruct` must inherit from `BinaryField` class, and each class that is being processed
-by `@binary_struct` decorator will have `BinaryField` added to its inheritence tree.
+by `@binary_struct` decorator will have `BinaryField` added to its inheritance tree.
 
 ### TypedBuffer and BinaryBuffer
 When using the buffer syntax (`data: [uint8_t, 32]` or `data: [uint8_t]`), the decorator will create an instance for
@@ -155,14 +155,6 @@ A `BinaryBuffer` is a `TypedBuffer` that also enforces size, and it will create 
 it is created
 
 ## Known issues
-### Super
-When using super in order to call the generated function, you must use `super(type(self), self)` instead of
-the regular `super()`. This happens because when the code is first executed, the default parameter of super is not
-`BinaryStruct`.
-
-#### Suggested solution
-One suggested solution is re-building all the classes function, it might help fixing the super problem
-
 ### Endianness conversion [WIP]
 Endianness converstion had 2 main issues:
 - A horrible amount of overhead was added:
@@ -191,7 +183,7 @@ Endianness converstion had 2 main issues:
     being passed to it.
     The only way to reference the converted `Base` class is:
     ```python
-    # This gets worse when there are multiple inheritence levels
+    # This gets worse when there are multiple inheritance levels
     NewBase = Nested.__annotations__['base'][0]
     ```
 
@@ -216,11 +208,13 @@ The nested fields issue have now 2 elegant solutions:
 - [X] Full Deserialization support
 - [X] Test coverage for `little_endian`
 - [X] Caching support
-- [X] More test cases for inheritence
+- [X] More test cases for inheritance
 - [X] Add `__eq__` operator
 - [X] Add default values
 - [X] Bitwise operations
 - [X] Add `__str__` and `__repr__`
+- [X] Lint the code
+- [X] Spell inheritance correctly
 
 ## WIP/TODO Features
 - [ ] Github actions support
@@ -232,5 +226,3 @@ The nested fields issue have now 2 elegant solutions:
 - [ ] Add control over individual fields
 - [ ] Add support for factory classes
 - [ ] A `@binary_union` decorator
-- [ ] Lint the code
-- [ ] Spell inheritance correctly

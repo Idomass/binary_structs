@@ -79,7 +79,7 @@ def test_valid_class_old_still_valid_nested():
 
     assert C.__annotations__['a'] is A
 
-def test_valid_class_old_still_valid_inheritence():
+def test_valid_class_old_still_valid_inheritance():
     @binary_struct
     class A:
         magic: uint32_t
@@ -98,7 +98,7 @@ def test_valid_class_old_still_valid_inheritence():
     assert A.b_type == [uint8_t]
     assert A.c_type == [uint8_t, 32]
 
-def test_valid_class_longer_inheritence_tree(BufferClassFixture):
+def test_valid_class_longer_inheritance_tree(BufferClassFixture):
     class A(BufferClassFixture):
         pass
 
@@ -116,7 +116,7 @@ def test_valid_class_longer_inheritence_tree(BufferClassFixture):
     assert isinstance(a.size, be_uint32_t)
     assert isinstance(a.buf[0], be_uint8_t)
 
-def test_valid_class_unrelated_inheritence_is_still_valid(BufferClassFixture):
+def test_valid_class_unrelated_inheritance_is_still_valid(BufferClassFixture):
     class A:
         pass
 
@@ -171,7 +171,7 @@ def test_valid_attr_init(NestedClassFixture):
 
     assert b.buffer == a
 
-def test_valid_mixed_inheritence_chain(BufferClassFixture):
+def test_valid_mixed_inheritance_chain(BufferClassFixture):
     class A(BufferClassFixture):
         bad: int
 

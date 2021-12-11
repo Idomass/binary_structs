@@ -3,7 +3,7 @@ import pytest
 from binary_structs import binary_struct, uint16_t, uint32_t, uint64_t, uint8_t
 
 
-def test_valid_class_init_with_inheritence(InheritedClassFixture):
+def test_valid_class_init_with_inheritance(InheritedClassFixture):
     a = InheritedClassFixture(32, [97] * 32, 0xff)
 
     assert a.size == 32
@@ -12,7 +12,7 @@ def test_valid_class_init_with_inheritence(InheritedClassFixture):
     assert a.magic == 0xff
     assert a.size_in_bytes == 40
 
-def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClassFixture):
+def test_valid_class_init_with_multiple_inheritance(MultipleInheritedClassFixture):
     a = MultipleInheritedClassFixture(32, [97] * 32, 5, 0xff)
 
     assert a.size == 32
@@ -23,7 +23,7 @@ def test_valid_class_init_with_multiple_inheritence(MultipleInheritedClassFixtur
     assert a.foo()
     assert a.size_in_bytes == 41
 
-def test_valid_class_with_multiple_inheritence_decorated_for_each(BufferClassFixture):
+def test_valid_class_with_multiple_inheritance_decorated_for_each(BufferClassFixture):
     @binary_struct
     class A(BufferClassFixture):
         magic: uint8_t
@@ -50,7 +50,7 @@ def test_invalid_class_inherited_name_conflict(BufferClassFixture, DynamicClassF
         class A(BufferClassFixture, DynamicClassFixture):
             pass
 
-def test_valid_inheritence_non_binary_struct(BufferClassFixture):
+def test_valid_inheritance_non_binary_struct(BufferClassFixture):
     class A(BufferClassFixture):
         pass
 
@@ -60,7 +60,7 @@ def test_valid_inheritence_non_binary_struct(BufferClassFixture):
     assert a.size == b.size
     assert a.buf == b.buf
 
-def test_valid_inheritence_mixed_chain(BufferClassFixture):
+def test_valid_inheritance_mixed_chain(BufferClassFixture):
     class NotABase(BufferClassFixture):
         bad: int
 
@@ -76,7 +76,7 @@ def test_valid_inheritence_mixed_chain(BufferClassFixture):
     assert b.size_in_bytes == 40
     assert not hasattr(b, 'bad')
 
-def test_valid_inheritence_binary_struct_on_top():
+def test_valid_inheritance_binary_struct_on_top():
     class A:
         bad: int
 
@@ -88,7 +88,7 @@ def test_valid_inheritence_binary_struct_on_top():
     assert b.real.value == 5
     assert not hasattr(b, 'bad')
 
-def test_valid_inheritence_different_chains(BufferClassFixture):
+def test_valid_inheritance_different_chains(BufferClassFixture):
     class C:
         bad: uint16_t
 
