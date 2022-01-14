@@ -215,8 +215,11 @@ The nested fields issue have now 2 elegant solutions:
 - [X] Add `__str__` and `__repr__`
 - [X] Lint the code
 - [X] Spell inheritance correctly
+- [X] Old type initialization support
 
 ## WIP/TODO Features
+- [ ] Slicing support
+- [ ] Assignment support, fields shouldn't be overwritten
 - [ ] Github actions support
 - [ ] Convertions support (`.h` files, `.so`, `ctypes`)
 - [ ] Make the struct sequential in memory

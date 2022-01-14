@@ -183,3 +183,11 @@ def test_valid_mixed_inheritance_chain(BufferClassFixture):
     a = B(100, [])
 
     assert not hasattr(a, 'bad')
+
+def test_valid_init_old_init(BufferClassFixture, NestedClassFixture):
+    BEN = big_endian(NestedClassFixture)
+
+    nested = BEN(buffer=BufferClassFixture(5, range(9)))
+
+    assert nested.buffer.size.value == 5
+    assert nested.buffer.buf == list(range(9)) + [0] * 23

@@ -122,8 +122,9 @@ def _init_binary_field(self: type, field_name: str, field_type: BinaryField, fie
     if field_value is None:
         setattr(self, field_name, field_type())
 
-    # Check if the correct type was passed
-    elif isinstance(field_value, field_type):
+    # Check if the correct type was passed or a comptabile one
+    elif isinstance(field_value, field_type) or \
+         getattr(field_type, f'_{field_type.__name__}__bs_old_id', -1) == id(type(field_value)):
         setattr(self, field_name, field_value)
 
     # Check for nested args initialization

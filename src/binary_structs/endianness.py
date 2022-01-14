@@ -79,6 +79,7 @@ def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: En
     new_dict = dict(filter(is_a_valid_field, cls.__dict__.items()))
 
     new_dict['__annotations__'] = dict(deepcopy(cls.__dict__.get('__annotations__', {})))
+    new_dict[f'_{cls.__name__}__bs_old_id'] = id(cls)
 
     new_dict.pop('__dict__', None)
     new_dict.pop('__weakref__', None)
