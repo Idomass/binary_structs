@@ -3,7 +3,7 @@ This file implements BinaryBuffer: a list with a type and a maximum size.
 It is used by the binary_struct class instead of lists.
 """
 
-from binary_structs.utils.buffers import TypedBuffer
+from binary_structs.utils.buffers import TypedBuffer, typed_buffer
 from binary_structs.utils.binary_field import BinaryField
 
 
@@ -73,3 +73,9 @@ class BinaryBuffer(TypedBuffer):
 
     def __imul__(self, n: int):
         raise MaxSizeExceededError('Can\'t multiply to an already full buffer')
+
+    @staticmethod
+    def from_bytes(underlying_type: type, buf: bytes):
+        typed_buf = TypedBuffer.from_bytes(underlying_type, buf)
+
+        return BinaryBuffer(underlying_type, len(typed_buf), typed_buf)
