@@ -90,3 +90,21 @@ class TypedBuffer(list, BinaryField):
     @property
     def size_in_bytes(self):
         return sum(element.size_in_bytes for element in self)
+
+    @staticmethod
+    def from_bytes(underlying_type: type, buf: bytes):
+        """
+        Creates a binary buffer from a bytes object
+        """
+
+        field_size = underlying_type().size_in_bytes
+        assert len(buf) % field_size == 0, 'Got invalid buffer length!'
+
+        arr = []
+        while buf != b'':
+            element = underlying_type()
+            element.deserialize(buf[:field_size])
+            arr.append(element)
+            buf = buf[field_size:]
+
+        return TypedBuffer(underlying_type, arr)

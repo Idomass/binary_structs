@@ -5,7 +5,7 @@ from binary_structs import BinaryField, uint8_t, int8_t, int16_t, uint16_t, \
                            int32_t, uint32_t, int64_t, uint64_t,            \
                            be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,  \
                            be_int32_t, be_uint32_t, be_int64_t, be_uint64_t
-
+from conftest import binary_fields
 
 # tests are catograized to:
 #   - underlying_type
@@ -96,15 +96,12 @@ def test_eq_operator(underlying_type, default_value, size, buf):
 
 # Bitwise tests
 bw_op = ['__and__', '__xor__', '__or__']
-fields = [uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t, int64_t,
-          be_uint8_t, be_uint16_t, be_uint32_t, be_uint64_t, be_int8_t, be_int16_t,
-          be_int32_t, be_int64_t]
-two_operands_list = [(kind1, kind2, op) for kind1 in fields for kind2 in fields for op in bw_op]
+two_operands_list = [(kind1, kind2, op) for kind1 in binary_fields for kind2 in binary_fields for op in bw_op]
 
 def _get_random_bytes_buffer(size, max_size):
     return bytes([random.randint(0x0, 0xff) for _ in range(size)]) + b'\x00' * (max_size - size)
 
-@pytest.mark.parametrize('field_type', fields)
+@pytest.mark.parametrize('field_type', binary_fields)
 def test_bitwise_not(field_type):
     num = field_type()
     buf = _get_random_bytes_buffer(num.size_in_bytes, num.size_in_bytes)

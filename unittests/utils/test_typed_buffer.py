@@ -1,5 +1,8 @@
 import pytest
 
+from os import urandom
+
+from conftest import binary_fields
 from binary_structs import TypedBuffer, uint32_t, uint8_t
 
 
@@ -160,3 +163,19 @@ def test_valid_deserialzation_empty_size(typed_buffer):
     typed_buffer.deserialize(b'\xff' * 15, size=0)
 
     assert typed_buffer.size_in_bytes == 0
+
+# Conversions
+from_bytes_arr = [(field, urandom(field().size_in_bytes * 5)) for field in binary_fields]
+from_bytes_arr += [(field, b'') for field in binary_fields]
+
+@pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
+def test_valid_from_bytes(underlying_type, buf):
+    a = TypedBuffer.from_bytes(underlying_type, buf)
+
+    assert bytes(a) == buf
+
+from_bytes_arr = [(field, urandom((field().size_in_bytes * 5) + 1)) for field in binary_fields if field().size_in_bytes != 1]
+@pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
+def test_invalid_from_bytes(underlying_type, buf):
+    with pytest.raises(AssertionError):
+        TypedBuffer.from_bytes(underlying_type, buf)

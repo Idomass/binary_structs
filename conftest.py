@@ -1,7 +1,6 @@
 import pytest
 
-from binary_structs import binary_struct, big_endian, little_endian,    \
-                           uint8_t, uint32_t, TypedBuffer
+from binary_structs import *
 
 # misc
 def empty_decorator(cls):
@@ -146,6 +145,10 @@ test_structs = [
         {'nested': {'buffer': [5, [1]], 'magic': 0xdeadbeef}, 'magic': 0xcafebabe}
     ]
 ]
+
+binary_fields = [uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t, int64_t,
+                 be_uint8_t, be_uint16_t, be_uint32_t, be_uint64_t, be_int8_t, be_int16_t,
+                 be_int32_t, be_int64_t]
 
 # Fixtures
 @pytest.fixture
