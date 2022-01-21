@@ -1,6 +1,9 @@
 import pytest
 
 from copy import deepcopy
+from binary_structs.utils.binary_field.binary_field import uint32_t
+from binary_structs.utils.buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
+from binary_structs.utils.buffers.typed_buffer import TypedBuffer
 from conftest import EmptyClass, empty_decorator, test_structs
 
 from binary_structs import binary_struct, big_endian, little_endian, uint8_t
@@ -88,3 +91,57 @@ def test_invalid_equal_different_structs(InheritedClassFixture):
 def test_string_conversion(cls, params):
     print()
     print(cls(**params))
+
+# Assignment support
+def test_valid_item_assignment_simple(SimpleClassFixture):
+    a = SimpleClassFixture()
+
+    a.a = 58
+    assert isinstance(a.a, uint8_t)
+    assert a.a == 58
+
+def test_valid_item_assignment_dyn_buf(DynamicClassFixture):
+    a = DynamicClassFixture()
+
+    a.buf = range(9)
+    assert isinstance(a.buf, TypedBuffer)
+    assert a.buf == list(range(9))
+
+def test_valid_item_assignment_dyn_buf_bytes(DynamicClassFixture):
+    a = DynamicClassFixture()
+
+    a.buf = bytes(range(17))
+    assert isinstance(a.buf, TypedBuffer)
+    assert a.buf == list(range(17))
+
+def test_invalid_item_assignement_wrong_type(DynamicClassFixture):
+    a = DynamicClassFixture()
+
+    with pytest.raises(TypeError):
+        a.buf = ['1', '2']
+
+def test_valid_item_assignment_bin_buf(BufferClassFixture):
+    a = BufferClassFixture()
+
+    a.buf = range(5)
+    assert isinstance(a.buf, BinaryBuffer)
+    assert a.buf == list(range(5)) + [0] * 27
+
+def test_invalid_item_assignment_bin_buf_too_big(BufferClassFixture):
+    a = BufferClassFixture()
+
+    with pytest.raises(MaxSizeExceededError):
+        a.buf = range(99)
+
+def test_valid_item_assignment_bin_buf_bytes(BufferClassFixture):
+    a = BufferClassFixture()
+
+    a.buf = bytes(range(29))
+    assert isinstance(a.buf, BinaryBuffer)
+    assert a.buf == list(range(29)) + [0] * 3
+
+def test_invalid_item_assignment_bin_buf_bytes_too_big(BufferClassFixture):
+    a = BufferClassFixture()
+
+    with pytest.raises(MaxSizeExceededError):
+        a.buf = bytes(range(99))
