@@ -217,9 +217,9 @@ The nested fields issue have now 2 elegant solutions:
 - [X] Spell inheritance correctly
 - [X] Old type initialization support
 - [X] Slicing support
+- [X] Assignment support, fields shouldn't be overwritten
 
 ## WIP/TODO Features
-- [ ] Assignment support, fields shouldn't be overwritten
 - [ ] Github actions support
 - [ ] Convertions support (`.h` files, `.so`, `ctypes`)
 - [ ] Make the struct sequential in memory

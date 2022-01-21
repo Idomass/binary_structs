@@ -145,3 +145,42 @@ def test_invalid_item_assignment_bin_buf_bytes_too_big(BufferClassFixture):
 
     with pytest.raises(MaxSizeExceededError):
         a.buf = bytes(range(99))
+
+def test_valid_item_assignment_nested(NestedClassFixture):
+    a = NestedClassFixture()
+
+    a.buffer = NestedClassFixture.buffer_type(5, range(16))
+    assert isinstance(a.buffer, NestedClassFixture.buffer_type)
+
+    assert a.buffer.size == 5
+    assert a.buffer.buf == list(range(16)) + [0] * 16
+
+def test_valid_item_assignment_nested_args(NestedClassFixture):
+    a = NestedClassFixture()
+
+    a.buffer = [0xde, range(12)]
+    assert isinstance(a.buffer, NestedClassFixture.buffer_type)
+
+    assert a.buffer.size == 0xde
+    assert a.buffer.buf == list(range(12)) + [0] * 20
+
+def test_invalid_item_assignment_nested_args(NestedClassFixture):
+    a = NestedClassFixture()
+
+    with pytest.raises(TypeError):
+        a.buffer = [1, 2]
+
+def test_valid_item_assignment_nested_kwargs(NestedClassFixture):
+    a = NestedClassFixture()
+
+    a.buffer = {'buf': b'AAAA'}
+    assert isinstance(a.buffer, NestedClassFixture.buffer_type)
+
+    assert a.buffer.size == 0
+    assert a.buffer.buf == [0x41] * 4 + [0] * 28
+
+def test_invalid_item_assignment_nested_kwargs(NestedClassFixture):
+    a = NestedClassFixture()
+
+    with pytest.raises(TypeError):
+        a.buffer = {'bad': 32}

@@ -166,6 +166,7 @@ def _set_binary_attr(self: type, field_name: str, field_value):
     else:
         self._init_binary_field(field_name, type(field), field_value)
 
+
 def _init_var(name: str, annotation, globals: dict, default_value: type) -> list[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
