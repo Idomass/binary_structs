@@ -123,6 +123,19 @@ def test_valid_insert_different_ctor(typed_buffer):
     assert typed_buffer[10] == 0
     assert typed_buffer[11:] == [97] * 10
 
+def test_valid_slicing(typed_buffer):
+    sub_buf = typed_buffer[:]
+
+    assert sub_buf is not typed_buffer
+    assert isinstance(sub_buf, TypedBuffer)
+    assert sub_buf == typed_buffer
+
+def test_valid_slicing_empty(typed_buffer):
+    sub_buf = typed_buffer[1000:]
+
+    assert isinstance(sub_buf, TypedBuffer)
+    assert sub_buf == []
+
 def test_valid_serialization_empty():
     assert bytes(TypedBuffer(uint8_t)) == b''
 

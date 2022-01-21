@@ -71,6 +71,13 @@ class TypedBuffer(list, BinaryField):
     def insert(self, index, element) -> None:
         return super().insert(index, self._build_new_element(element))
 
+    def __getitem__(self, index_or_slice):
+        if isinstance(index_or_slice, slice):
+            return TypedBuffer(self._underlying_type, super().__getitem__(index_or_slice))
+
+        else:
+            return super().__getitem__(index_or_slice)
+
     def __setitem__(self, index_or_slice, element) -> None:
         if isinstance(index_or_slice, slice):
             return super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])

@@ -54,6 +54,21 @@ def test_valid_item_assignment():
     a[0] = 0x0
     assert a[0].value == 0
 
+def test_valid_slicing():
+    bin_buf = BinaryBuffer(uint32_t, 50, list(range(3)))
+    sub_buf = bin_buf[:]
+
+    assert sub_buf is not bin_buf
+    assert isinstance(sub_buf, BinaryBuffer)
+    assert sub_buf == bin_buf
+
+def test_valid_slicing_empty():
+    bin_buf = BinaryBuffer(uint32_t, 50, list(range(42)))
+    sub_buf = bin_buf[1000:]
+
+    assert isinstance(sub_buf, BinaryBuffer)
+    assert sub_buf == []
+
 def test_valid_serialization():
     a = BinaryBuffer(uint8_t, 10, [0x41] * 10)
 
