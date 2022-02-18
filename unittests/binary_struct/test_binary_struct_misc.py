@@ -1,12 +1,10 @@
 import pytest
 
 from copy import deepcopy
-from binary_structs.utils.binary_field.binary_field import uint32_t
-from binary_structs.utils.buffers.binary_buffer import BinaryBuffer, MaxSizeExceededError
-from binary_structs.utils.buffers.typed_buffer import TypedBuffer
 from conftest import EmptyClass, empty_decorator, test_structs
+from binary_structs import BinaryBuffer, MaxSizeExceededError, TypedBuffer
 
-from binary_structs import binary_struct, big_endian, little_endian, uint8_t
+from binary_structs import binary_struct, big_endian, little_endian, uint8_t, le_uint8_t
 
 
 @pytest.mark.skip(reason='#TODO Cant figure a way to pass it for now')
@@ -97,7 +95,7 @@ def test_valid_item_assignment_simple(SimpleClassFixture):
     a = SimpleClassFixture()
 
     a.a = 58
-    assert isinstance(a.a, uint8_t)
+    assert isinstance(a.a, le_uint8_t)
     assert a.a == 58
 
 def test_valid_item_assignment_dyn_buf(DynamicClassFixture):

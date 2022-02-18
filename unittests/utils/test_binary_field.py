@@ -1,9 +1,9 @@
 import pytest
 import random
 
-from binary_structs import BinaryField, uint8_t, int8_t, int16_t, uint16_t, \
-                           int32_t, uint32_t, int64_t, uint64_t,            \
-                           be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,  \
+from binary_structs import BinaryField, le_uint8_t, le_int8_t, le_int16_t, le_uint16_t, \
+                           le_int32_t, le_uint32_t, le_int64_t, le_uint64_t,            \
+                           be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,              \
                            be_int32_t, be_uint32_t, be_int64_t, be_uint64_t
 from conftest import binary_fields
 
@@ -14,14 +14,14 @@ from conftest import binary_fields
 #   - deserialization buffer
 test_buffer = [
     # little endian
-    (int8_t, -128, 1, b'\x80'),
-    (uint8_t, 250, 1, b'\xfa'),
-    (int16_t, -11214, 2, b'\x32\xd4'),
-    (uint16_t, 65001, 2, b'\xe9\xfd'),
-    (int32_t, -12891289, 4, b'\x67\x4b\x3b\xff'),
-    (uint32_t, 9384012, 4, b'\x4c\x30\x8f\x00'),
-    (int64_t, -3712379149898, 8, b'\xff\xff\xfc\x9f\xa4\xf5\xa1\xb6'[::-1]),
-    (uint64_t, 28427847382434, 8, b'\x00\x00\x19\xda\xdf\xbe\xb5\xa2'[::-1]),
+    (le_int8_t, -128, 1, b'\x80'),
+    (le_uint8_t, 250, 1, b'\xfa'),
+    (le_int16_t, -11214, 2, b'\x32\xd4'),
+    (le_uint16_t, 65001, 2, b'\xe9\xfd'),
+    (le_int32_t, -12891289, 4, b'\x67\x4b\x3b\xff'),
+    (le_uint32_t, 9384012, 4, b'\x4c\x30\x8f\x00'),
+    (le_int64_t, -3712379149898, 8, b'\xff\xff\xfc\x9f\xa4\xf5\xa1\xb6'[::-1]),
+    (le_uint64_t, 28427847382434, 8, b'\x00\x00\x19\xda\xdf\xbe\xb5\xa2'[::-1]),
 
     # big endian
     (be_int8_t, -128, 1, b'\x80'),
@@ -125,3 +125,18 @@ def test_bitwise_operator2(type1, type2, operand):
 
     assert getattr(BinaryField, operand)(num1, num2) == getattr(BinaryField, operand)(num2, num1)
     assert bitwised_buf == getattr(BinaryField, operand)(num1, num2)
+
+# Compatible init test
+@pytest.mark.parametrize('type1', binary_fields)
+def test_compatible_types_init(type1):
+    a = type1(0x33)
+    b = type1(a)
+
+    assert a.value == b.value
+
+incompatible_type = [(type1, type2) for type1 in binary_fields for type2 in binary_fields if type1 != type2]
+@pytest.mark.parametrize('type1, type2', incompatible_type)
+def test_incompatible_types_init(type1, type2):
+    a = type1()
+    with pytest.raises(TypeError):
+        type2(a)

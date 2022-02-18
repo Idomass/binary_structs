@@ -3,7 +3,7 @@ import pytest
 from os import urandom
 
 from conftest import binary_fields
-from binary_structs import TypedBuffer, uint32_t, uint8_t
+from binary_structs import TypedBuffer, uint32_t, uint8_t, le_uint8_t
 
 
 def test_valid_init():
@@ -22,7 +22,7 @@ def test_valid_init_different_ctor():
     assert a == [97] * 50
 
 def test_valid_append(typed_buffer):
-    typed_buffer.append(uint8_t(50))
+    typed_buffer.append(le_uint8_t(50))
 
     assert typed_buffer[-1].value == 50
 
@@ -36,7 +36,7 @@ def test_valid_append_differnent_ctor(typed_buffer):
     assert typed_buffer[-1].value == 5
 
 def test_item_assignment_valid(typed_buffer):
-    typed_buffer[0] = uint8_t(1)
+    typed_buffer[0] = le_uint8_t(1)
 
     assert typed_buffer[0].value == 1
 
@@ -50,7 +50,7 @@ def test_item_assignment_valid_different_ctor(typed_buffer):
     assert typed_buffer[0].value == 5
 
 def test_list_slicing_valid(typed_buffer):
-    typed_buffer[:10] = [uint8_t(0)] * 10
+    typed_buffer[:10] = [le_uint8_t(0)] * 10
 
     assert typed_buffer[:10] == [0] * 10
     assert typed_buffer[10:] == [97] * 10
@@ -74,7 +74,7 @@ def test_valid_copy(typed_buffer):
     assert original_buffer != typed_buffer
 
 def test_valid_extend(typed_buffer):
-    typed_buffer.extend([uint8_t(50)] * 5)
+    typed_buffer.extend([le_uint8_t(50)] * 5)
 
     assert typed_buffer[:20] == [97] * 20
     assert typed_buffer[20:] == [50] * 5
@@ -90,7 +90,7 @@ def test_valid_extend_different_ctor(typed_buffer):
     assert typed_buffer[20:] == [50] * 5
 
 def test_valid_iadd(typed_buffer):
-    typed_buffer += [uint8_t(50)] * 5
+    typed_buffer += [le_uint8_t(50)] * 5
 
     assert typed_buffer[:20] == [97] * 20
     assert typed_buffer[20:] == [50] * 5
@@ -106,7 +106,7 @@ def test_valid_iadd_different_ctor(typed_buffer):
     assert typed_buffer[20:] == [50] * 5
 
 def test_valid_insert(typed_buffer):
-    typed_buffer.insert(10, uint8_t(0))
+    typed_buffer.insert(10, le_uint8_t(0))
 
     assert typed_buffer[:10] == [97] * 10
     assert typed_buffer[10] == 0

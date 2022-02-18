@@ -1,8 +1,7 @@
 import pytest
 
 from conftest import default_structs
-from binary_structs import binary_struct, uint32_t, uint8_t, int8_t, BinaryBuffer,  \
-                           be_uint8_t, MaxSizeExceededError, TypedBuffer
+from binary_structs import binary_struct, uint32_t, MaxSizeExceededError, le_uint8_t, le_uint32_t
 
 
 def test_empty_class(EmptyClassFixture):
@@ -27,7 +26,7 @@ def test_invalid_simple_class(SimpleClassFixture):
 def test_valid_simple_class_assert_type(SimpleClassFixture):
     a = SimpleClassFixture(5)
 
-    assert isinstance(a.a, uint8_t)
+    assert isinstance(a.a, le_uint8_t)
 
 def test_valid_type_alias():
     tmp = uint32_t
@@ -51,7 +50,7 @@ def test_valid_buffer(BufferClassFixture):
     for element in a.buf:
         assert element.value == 97
 
-    assert isinstance(a.buf[0], uint8_t)
+    assert isinstance(a.buf[0], le_uint8_t)
 
 def test_invalid_length_buffer(BufferClassFixture):
     with pytest.raises(MaxSizeExceededError):
@@ -78,7 +77,7 @@ def test_valid_nested_class(BufferClassFixture, NestedClassFixture):
 def test_valid_class_duplicate_members(DuplicateClassFixture):
     a = DuplicateClassFixture(0xff)
 
-    assert isinstance(a.magic, uint32_t)
+    assert isinstance(a.magic, le_uint32_t)
     assert a.magic.value == 0xff
 
 def test_valid_class_dynamic_buffer(DynamicClassFixture):
@@ -178,42 +177,3 @@ def test_valid_init_default_value(expected):
 def test_valid_init_default_value_typed_buffer_are_different(DefaultTypedBufferClassFixture):
     assert DefaultTypedBufferClassFixture().buf is not DefaultTypedBufferClassFixture().buf
     assert DefaultTypedBufferClassFixture().buf == DefaultTypedBufferClassFixture().buf
-
-def test_valid_init_compatible_primitive(SimpleClassFixture):
-    a = SimpleClassFixture(be_uint8_t(99))
-
-    assert isinstance(a.a, uint8_t)
-    assert a.a == 99
-
-def test_invalid_init_non_compatible_primitive_size(SimpleClassFixture):
-    with pytest.raises(TypeError):
-        SimpleClassFixture(uint32_t(0xdead))
-
-def test_invalid_init_non_compatible_primitive_sign(SimpleClassFixture):
-    with pytest.raises(TypeError):
-        SimpleClassFixture(int8_t(99))
-
-def test_valid_init_compatible_dyn_buf(DynamicClassFixture):
-    a = DynamicClassFixture(buf=TypedBuffer(be_uint8_t, range(9)))
-
-    assert isinstance(a.buf[0], uint8_t)
-    assert a.buf == list(range(9))
-
-def test_invalid_init_non_compatible_dyn_buf_type(DynamicClassFixture):
-    with pytest.raises(TypeError):
-        DynamicClassFixture(buf=TypedBuffer(int8_t, range(9)))
-
-def test_valid_init_compatible_bin_buf(BufferClassFixture):
-    a = BufferClassFixture(buf=BinaryBuffer(be_uint8_t, 32, range(7)))
-
-    assert isinstance(a.buf[0], uint8_t)
-    assert a.buf.size_in_bytes == 32
-    assert a.buf == list(range(7)) + [0] * 25
-
-def test_invalid_init_non_compatible_bin_buf_type(BufferClassFixture):
-    with pytest.raises(TypeError):
-        BufferClassFixture(buf=BinaryBuffer(int8_t, 32))
-
-def test_invalid_init_non_compatible_bin_buf_size(BufferClassFixture):
-    with pytest.raises(MaxSizeExceededError):
-        BufferClassFixture(buf=BinaryBuffer(uint8_t, 48))

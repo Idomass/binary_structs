@@ -53,8 +53,8 @@ def test_valid_class_simple_inhertience_old_still_valid(BufferClassFixture):
     A = big_endian(BufferClassFixture)
 
     a = BufferClassFixture(5, [1, 2, 3])
-    assert isinstance(a.size, uint32_t)
-    assert isinstance(a.buf[0], uint8_t)
+    assert isinstance(a.size, le_uint32_t)
+    assert isinstance(a.buf[0], le_uint8_t)
 
 def test_valid_class_old_still_valid():
     @binary_struct

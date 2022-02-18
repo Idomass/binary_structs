@@ -86,6 +86,17 @@ class PrimitiveTypeField(BinaryField):
     Designed for primitive ctypes types, implements BinaryField
     """
 
+    def __init__(self, value: int = 0):
+        # Check compatiblilty
+        if isinstance(value, PrimitiveTypeField):
+            if not isinstance(value, type(self)):
+                raise TypeError('Incompatible type passed!')
+
+            value = value.value
+
+        ctypes_parent = type(self).__base__.__bases__[1]
+        ctypes_parent.__init__(self, value)
+
     def deserialize(self, buffer):
         if len(buffer) < self.size_in_bytes:
             raise ValueError('Given buffer is too small!')
@@ -117,45 +128,45 @@ class PrimitiveTypeField(BinaryField):
         return struct.pack(self.FORMAT, self.value)
 
 
-class int8_t(ctypes.c_int8, PrimitiveTypeField):
+class tmpl_int8_t(PrimitiveTypeField, ctypes.c_int8):
     FORMAT = 'b'
 
 
-class uint8_t(ctypes.c_uint8, PrimitiveTypeField):
+class tmpl_uint8_t(PrimitiveTypeField, ctypes.c_uint8):
     FORMAT = 'B'
 
 
-class int16_t(ctypes.c_int16, PrimitiveTypeField):
+class tmpl_int16_t(PrimitiveTypeField, ctypes.c_int16):
     FORMAT = 'h'
 
 
-class uint16_t(ctypes.c_uint16, PrimitiveTypeField):
+class tmpl_uint16_t(PrimitiveTypeField, ctypes.c_uint16):
     FORMAT = 'H'
 
 
-class int32_t(ctypes.c_int32, PrimitiveTypeField):
+class tmpl_int32_t(PrimitiveTypeField, ctypes.c_int32):
     FORMAT = 'i'
 
 
-class uint32_t(ctypes.c_uint32, PrimitiveTypeField):
+class tmpl_uint32_t(PrimitiveTypeField, ctypes.c_uint32):
     FORMAT = 'I'
 
 
-class int64_t(ctypes.c_int64, PrimitiveTypeField):
+class tmpl_int64_t(PrimitiveTypeField, ctypes.c_int64):
     FORMAT = 'q'
 
 
-class uint64_t(ctypes.c_uint64, PrimitiveTypeField):
+class tmpl_uint64_t(PrimitiveTypeField, ctypes.c_uint64):
     FORMAT = 'Q'
 
 
-def big_endian_field(cls=None):
+def endian_field(cls, format: str):
     """
-    Makes sure that a BinaryField is big endian
+    Makes sure that a BinaryField is of the given endianness
     """
 
     def wrap(cls):
-        cls.FORMAT = f'>{cls.FORMAT}'
+        cls.FORMAT = f'{format}{cls.FORMAT}'
         return cls
 
     if cls is None:
@@ -164,41 +175,89 @@ def big_endian_field(cls=None):
     return wrap(cls)
 
 
+def big_endian_field(cls=None):
+    return endian_field(cls, '>')
+
+
+def little_endian_field(cls=None):
+    return endian_field(cls, '<')
+
+
 @big_endian_field
-class be_int8_t(int8_t):
+class be_int8_t(tmpl_int8_t):
     pass
 
 
 @big_endian_field
-class be_uint8_t(uint8_t):
+class be_uint8_t(tmpl_uint8_t):
     pass
 
 
 @big_endian_field
-class be_int16_t(int16_t):
+class be_int16_t(tmpl_int16_t):
     pass
 
 
 @big_endian_field
-class be_uint16_t(uint16_t):
+class be_uint16_t(tmpl_uint16_t):
     pass
 
 
 @big_endian_field
-class be_int32_t(int32_t):
+class be_int32_t(tmpl_int32_t):
     pass
 
 
 @big_endian_field
-class be_uint32_t(uint32_t):
+class be_uint32_t(tmpl_uint32_t):
     pass
 
 
 @big_endian_field
-class be_int64_t(int64_t):
+class be_int64_t(tmpl_int64_t):
     pass
 
 
 @big_endian_field
-class be_uint64_t(uint64_t):
+class be_uint64_t(tmpl_uint64_t):
+    pass
+
+
+@little_endian_field
+class le_int8_t(tmpl_int8_t):
+    pass
+
+
+@little_endian_field
+class le_uint8_t(tmpl_uint8_t):
+    pass
+
+
+@little_endian_field
+class le_int16_t(tmpl_int16_t):
+    pass
+
+
+@little_endian_field
+class le_uint16_t(tmpl_uint16_t):
+    pass
+
+
+@little_endian_field
+class le_int32_t(tmpl_int32_t):
+    pass
+
+
+@little_endian_field
+class le_uint32_t(tmpl_uint32_t):
+    pass
+
+
+@little_endian_field
+class le_int64_t(tmpl_int64_t):
+    pass
+
+
+@little_endian_field
+class le_uint64_t(tmpl_uint64_t):
     pass

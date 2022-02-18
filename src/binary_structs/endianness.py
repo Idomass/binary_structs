@@ -17,14 +17,14 @@ def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: End
     """
 
     le_to_be = {
-        int8_t: be_int8_t,
-        uint8_t: be_uint8_t,
-        int16_t: be_int16_t,
-        uint16_t: be_uint16_t,
-        int32_t: be_int32_t,
-        uint32_t: be_uint32_t,
-        int64_t: be_int64_t,
-        uint64_t: be_uint64_t,
+        le_int8_t: be_int8_t,
+        le_uint8_t: be_uint8_t,
+        le_int16_t: be_int16_t,
+        le_uint16_t: be_uint16_t,
+        le_int32_t: be_int32_t,
+        le_uint32_t: be_uint32_t,
+        le_int64_t: be_int64_t,
+        le_uint64_t: be_uint64_t,
     }
 
     # The other way around
