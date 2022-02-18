@@ -122,9 +122,13 @@ def _init_binary_field(self: type, field_name: str, field_type: BinaryField, fie
     if field_value is None:
         object.__setattr__(self, field_name, field_type())
 
-    # Check if the correct type was passed or a comptabile one
-    elif isinstance(field_value, field_type) or \
-         getattr(field_type, f'_{field_type.__name__}__bs_old_id', -1) == id(type(field_value)):
+    # Check if the correct type was passed
+    elif isinstance(field_value, field_type):
+        object.__setattr__(self, field_name, field_value)
+
+    # Check if type is compatible
+    elif _is_binary_struct(type(field_value)) and _is_binary_struct(field_type) and \
+        type(field_value).__annotations__ == field_type.__annotations__:
         object.__setattr__(self, field_name, field_value)
 
     # Check for nested args initialization
@@ -278,8 +282,9 @@ def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
     This function will compare all fields that were declared in the annotations.
     """
 
+    globals['BinaryField'] = BinaryField
     lines = [
-        'if not isinstance(other, type(self)):'
+        'if not isinstance(other, BinaryField):\n',
         '    return False'
     ]
 

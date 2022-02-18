@@ -184,10 +184,41 @@ def test_valid_mixed_inheritance_chain(BufferClassFixture):
 
     assert not hasattr(a, 'bad')
 
-def test_valid_init_old_init(BufferClassFixture, NestedClassFixture):
-    BEN = big_endian(NestedClassFixture)
+def test_multiple_decorated_still_eq(BufferClassFixture):
+    a = BufferClassFixture(15, range(21))
+    Decorated = little_endian(little_endian(little_endian(BufferClassFixture)))
+    b = Decorated(15, range(21))
 
-    nested = BEN(buffer=BufferClassFixture(5, range(9)))
+    assert a == b
 
-    assert nested.buffer.size.value == 5
-    assert nested.buffer.buf == list(range(9)) + [0] * 23
+def test_valid_init_compatible_type():
+    @big_endian
+    @binary_struct
+    class A:
+        a: uint16_t
+
+    @big_endian
+    @big_endian
+    @binary_struct
+    class B:
+        a: A
+
+    a = A(5)
+    b = B(a)
+
+    assert b.a == a
+
+def test_invalid_init_incompatible_type():
+    @big_endian
+    @binary_struct
+    class A:
+        f: uint16_t
+
+    @little_endian
+    @binary_struct
+    class B:
+        a: A
+
+    a = A(5)
+    with pytest.raises(TypeError):
+        B(a)

@@ -74,7 +74,7 @@ def test_invalid_equal_not_binary_struct(SimpleClassFixture):
 
     assert b != a
 
-def test_invalid_equal_different_structs(InheritedClassFixture):
+def test_valid_equal_different_structs(InheritedClassFixture):
     @binary_struct
     class A(InheritedClassFixture):
         pass
@@ -82,7 +82,7 @@ def test_invalid_equal_different_structs(InheritedClassFixture):
     a = A(3, [0] * 9, 0xdead)
     b = InheritedClassFixture(3, [0] * 9, 0xdead)
 
-    assert a != b
+    assert a == b
 
 # __str__ tests
 @pytest.mark.parametrize('cls, params', test_structs)
