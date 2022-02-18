@@ -1,5 +1,8 @@
 import pytest
 
+from os import urandom
+
+from conftest import binary_fields
 from binary_structs import uint32_t, uint8_t, BinaryBuffer, MaxSizeExceededError
 
 
@@ -50,6 +53,21 @@ def test_valid_item_assignment():
 
     a[0] = 0x0
     assert a[0].value == 0
+
+def test_valid_slicing():
+    bin_buf = BinaryBuffer(uint32_t, 50, list(range(3)))
+    sub_buf = bin_buf[:]
+
+    assert sub_buf is not bin_buf
+    assert isinstance(sub_buf, BinaryBuffer)
+    assert sub_buf == bin_buf
+
+def test_valid_slicing_empty():
+    bin_buf = BinaryBuffer(uint32_t, 50, list(range(42)))
+    sub_buf = bin_buf[1000:]
+
+    assert isinstance(sub_buf, BinaryBuffer)
+    assert sub_buf == []
 
 def test_valid_serialization():
     a = BinaryBuffer(uint8_t, 10, [0x41] * 10)
@@ -107,3 +125,21 @@ def test_valid_deserialization_buffer_too_big():
 def test_invalid_deserialization_buffer_too_small():
     with pytest.raises(ValueError):
         BinaryBuffer(uint8_t, 4).deserialize(b'\xff' * 2)
+
+
+# Conversions
+from_bytes_arr = [(field, urandom(field().size_in_bytes * 5)) for field in binary_fields]
+from_bytes_arr += [(field, b'') for field in binary_fields]
+
+@pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
+def test_valid_from_bytes(underlying_type, buf):
+    a = BinaryBuffer.from_bytes(underlying_type, buf)
+
+    assert isinstance(a, BinaryBuffer)
+    assert bytes(a) == buf
+
+from_bytes_arr = [(field, urandom((field().size_in_bytes * 5) + 1)) for field in binary_fields if field().size_in_bytes != 1]
+@pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
+def test_invalid_from_bytes(underlying_type, buf):
+    with pytest.raises(AssertionError):
+        BinaryBuffer.from_bytes(underlying_type, buf)

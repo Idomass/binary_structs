@@ -120,23 +120,55 @@ def _init_binary_field(self: type, field_name: str, field_type: BinaryField, fie
 
     # Default value initialization
     if field_value is None:
-        setattr(self, field_name, field_type())
+        object.__setattr__(self, field_name, field_type())
 
     # Check if the correct type was passed
     elif isinstance(field_value, field_type):
-        setattr(self, field_name, field_value)
+        object.__setattr__(self, field_name, field_value)
+
+    # Check if type is compatible
+    elif _is_binary_struct(type(field_value)) and _is_binary_struct(field_type) and \
+        type(field_value).__annotations__ == field_type.__annotations__:
+        object.__setattr__(self, field_name, field_value)
 
     # Check for nested args initialization
     elif isinstance(field_value, list):
-        setattr(self, field_name, field_type(*field_value))
+        object.__setattr__(self, field_name, field_type(*field_value))
 
     # Check for nested kwargs initialization
     elif isinstance(field_value, dict):
-        setattr(self, field_name, field_type(**field_value))
+        object.__setattr__(self, field_name, field_type(**field_value))
 
     # Try to init with convertable value
     else:
-        setattr(self, field_name, field_type(field_value))
+        object.__setattr__(self, field_name, field_type(field_value))
+
+
+def _set_binary_attr(self: type, field_name: str, field_value):
+    """
+    Asserts that the type that is passed is defined, and passes
+    it into init var
+    """
+
+    if not hasattr(self, field_name):
+        # This is a new attribute, do nothing
+        object.__setattr__(self, field_name, field_value)
+        return
+
+    field = getattr(self, field_name)
+
+    if type(field) is TypedBuffer:
+        new_buf = TypedBuffer(field._underlying_type, field_value)
+
+        object.__setattr__(self, field_name, new_buf)
+
+    elif type(field) is BinaryBuffer:
+        new_buf = BinaryBuffer(field._underlying_type, field._size, field_value)
+
+        object.__setattr__(self, field_name, new_buf)
+
+    else:
+        self._init_binary_field(field_name, type(field), field_value)
 
 
 def _init_var(name: str, annotation, globals: dict, default_value: type) -> list[str]:
@@ -157,15 +189,17 @@ def _init_var(name: str, annotation, globals: dict, default_value: type) -> list
         annotation, size = annotation
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = BinaryBuffer({type_name}, {size}, '
-                                               f'{name} or {name}_default_value or [])']
+        init_var =  [f'{name} = BinaryBuffer({type_name}, {size}, '
+                                           f'{name} or {name}_default_value or [])']
+        init_var += [f'object.__setattr__(self, "{name}", {name})']
 
     elif annotation_type == AnnotationType.TYPED_BUFFER:
         annotation = annotation[0]
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var = [f'self.{name} = TypedBuffer({type_name}, '
-                                              f'{name} or {name}_default_value or [])']
+        init_var =  [f'{name} = TypedBuffer({type_name}, '
+                                          f'{name} or {name}_default_value or [])']
+        init_var += [f'object.__setattr__(self, "{name}", {name})']
 
     elif annotation_type == AnnotationType.OTHER:
         type_name = _insert_type_to_globals(annotation, globals)
@@ -248,8 +282,9 @@ def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
     This function will compare all fields that were declared in the annotations.
     """
 
+    globals['BinaryField'] = BinaryField
     lines = [
-        'if not isinstance(other, type(self)):'
+        'if not isinstance(other, BinaryField):\n',
         '    return False'
     ]
 
@@ -423,6 +458,7 @@ def _process_class(cls):
 
     # Add other attributes
     other_attrs = {
+        '__setattr__': _set_binary_attr,
         '_init_binary_field':   _init_binary_field,
         'size_in_bytes':        property(generated_fns['_bs_size']),
         f'_{cls.__name__}__is_binary_struct':   True

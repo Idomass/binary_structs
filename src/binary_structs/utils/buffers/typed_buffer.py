@@ -71,6 +71,13 @@ class TypedBuffer(list, BinaryField):
     def insert(self, index, element) -> None:
         return super().insert(index, self._build_new_element(element))
 
+    def __getitem__(self, index_or_slice):
+        if isinstance(index_or_slice, slice):
+            return TypedBuffer(self._underlying_type, super().__getitem__(index_or_slice))
+
+        else:
+            return super().__getitem__(index_or_slice)
+
     def __setitem__(self, index_or_slice, element) -> None:
         if isinstance(index_or_slice, slice):
             return super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])
@@ -90,3 +97,21 @@ class TypedBuffer(list, BinaryField):
     @property
     def size_in_bytes(self):
         return sum(element.size_in_bytes for element in self)
+
+    @staticmethod
+    def from_bytes(underlying_type: type, buf: bytes):
+        """
+        Creates a binary buffer from a bytes object
+        """
+
+        field_size = underlying_type().size_in_bytes
+        assert len(buf) % field_size == 0, 'Got invalid buffer length!'
+
+        arr = []
+        while buf != b'':
+            element = underlying_type()
+            element.deserialize(buf[:field_size])
+            arr.append(element)
+            buf = buf[field_size:]
+
+        return TypedBuffer(underlying_type, arr)

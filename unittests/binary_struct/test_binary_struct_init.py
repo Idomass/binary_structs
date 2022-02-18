@@ -1,7 +1,7 @@
 import pytest
 
 from conftest import default_structs
-from binary_structs import binary_struct, uint32_t, uint8_t, MaxSizeExceededError
+from binary_structs import binary_struct, uint32_t, MaxSizeExceededError, le_uint8_t, le_uint32_t
 
 
 def test_empty_class(EmptyClassFixture):
@@ -26,7 +26,7 @@ def test_invalid_simple_class(SimpleClassFixture):
 def test_valid_simple_class_assert_type(SimpleClassFixture):
     a = SimpleClassFixture(5)
 
-    assert isinstance(a.a, uint8_t)
+    assert isinstance(a.a, le_uint8_t)
 
 def test_valid_type_alias():
     tmp = uint32_t
@@ -50,7 +50,7 @@ def test_valid_buffer(BufferClassFixture):
     for element in a.buf:
         assert element.value == 97
 
-    assert isinstance(a.buf[0], uint8_t)
+    assert isinstance(a.buf[0], le_uint8_t)
 
 def test_invalid_length_buffer(BufferClassFixture):
     with pytest.raises(MaxSizeExceededError):
@@ -77,7 +77,7 @@ def test_valid_nested_class(BufferClassFixture, NestedClassFixture):
 def test_valid_class_duplicate_members(DuplicateClassFixture):
     a = DuplicateClassFixture(0xff)
 
-    assert isinstance(a.magic, uint32_t)
+    assert isinstance(a.magic, le_uint32_t)
     assert a.magic.value == 0xff
 
 def test_valid_class_dynamic_buffer(DynamicClassFixture):

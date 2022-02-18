@@ -215,6 +215,9 @@ The nested fields issue have now 2 elegant solutions:
 - [X] Add `__str__` and `__repr__`
 - [X] Lint the code
 - [X] Spell inheritance correctly
+- [X] Old type initialization support
+- [X] Slicing support
+- [X] Assignment support, fields shouldn't be overwritten
 
 ## WIP/TODO Features
 - [ ] Github actions support
