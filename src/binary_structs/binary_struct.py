@@ -430,7 +430,12 @@ def _process_class(cls):
     if not issubclass(cls, BinaryField):
         cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
         cls_bases += (BinaryField,)
-        cls = type(cls.__name__, cls_bases, dict(cls.__dict__))
+
+        new_dict = dict(cls.__dict__)
+        new_dict.pop('__dict__', None)
+        new_dict.pop('__weakref__', None)
+
+        cls = type(cls.__name__, cls_bases, new_dict)
 
     # These will be used for creating the new class
     # They are the same as annotations, but they contain the default value too
