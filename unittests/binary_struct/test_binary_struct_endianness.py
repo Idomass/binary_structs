@@ -1,6 +1,9 @@
 import pytest
 
 from binary_structs import *
+from conftest import available_decorators
+
+decorators_without_format = [decorator[0] for decorator in available_decorators]
 
 
 # Initialization testing
@@ -222,3 +225,16 @@ def test_invalid_init_incompatible_type():
     a = A(5)
     with pytest.raises(TypeError):
         B(a)
+
+
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_init_class_dict_and_weakref_not_broken_after_conversion(decorator):
+    class A:
+        pass
+
+    B = decorator(binary_struct(A))
+
+    assert A.__dict__ is not B.__dict__
+    assert A().__dict__ is not B().__dict__
+
+    assert A.__weakref__ is not B.__weakref__
