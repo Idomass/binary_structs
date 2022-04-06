@@ -23,8 +23,6 @@ def new_typed_buffer(underlying_type: BinaryField):
         TypedBuffer, is a list the enforces type of its elements
         """
 
-        __UNDERLYING_TYPE = underlying_type
-
         def __init__(self, buf: list = []):
             for index, element in enumerate(buf):
                 super().insert(index, self._build_new_element(element))

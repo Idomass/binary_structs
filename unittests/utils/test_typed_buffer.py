@@ -60,6 +60,9 @@ def test_list_slicing_valid(typed_buffer):
     assert typed_buffer[:10] == [0] * 10
     assert typed_buffer[10:] == [97] * 10
 
+def test_list_slicing_valid_empty(typed_buffer):
+    assert typed_buffer[25:] == []
+
 def test_list_slicing_invalid(typed_buffer):
     with pytest.raises(TypeError):
         typed_buffer[:5] = ['hello', 'world']
