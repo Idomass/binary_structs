@@ -144,8 +144,10 @@ Each field that is being used in a `BinaryStruct` must inherit from `BinaryField
 by `@binary_struct` decorator will have `BinaryField` added to its inheritance tree.
 
 ### TypedBuffer and BinaryBuffer
+These types are generated for each definition using the `new_binary_buffer`/`new_typed_buffer` syntax.
+
 When using the buffer syntax (`data: [uint8_t, 32]` or `data: [uint8_t]`), the decorator will create an instance for
-a `BinaryBuffer` and a `TypedBuffer` respectively.
+a `BinaryBuffer` and a `TypedBuffer` respectively with the correct type.
 
 A `TypedBuffer`, as the name suggests, enforces that each parameter that is being
 passed to it has the same type as the underlying type it was declared with.

@@ -1,17 +1,15 @@
 """
-This file implements BinaryBuffer: a list with a type and a maximum size.
+This file implements BinaryBuffer class: a list with a type and a maximum size.
 It is used by the binary_struct class instead of lists.
 """
 
 from functools import lru_cache
 from binary_structs.utils.buffers import new_typed_buffer
-from binary_structs.utils.binary_field import BinaryField
 
 
 class MaxSizeExceededError(Exception):
     """
-    Indicates that a SizedList had it max size exceed the given
-    boundries.
+    Indicates that a SizedList had it max size exceed the given boundries.
     """
 
 

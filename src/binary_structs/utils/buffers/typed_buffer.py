@@ -1,8 +1,7 @@
 """
-This file has the implementation for TypedBuffer.
+This file has the implementation for TypedBuffer class.
 It is used by BinaryBuffer and binary_structs.
-It is used to enforce the type that is being added to
-the buffer
+It is used to enforce the type that is being added to the buffer
 """
 
 from functools import lru_cache
