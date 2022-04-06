@@ -29,6 +29,8 @@ def new_binary_buffer(underlying_type: type, size: int):
         and the passed parameter.
         """
 
+        SIZE = size
+
         def __init__(self, buf: list = []):
             """
             A buffer with the given size will be created with empty instances in order

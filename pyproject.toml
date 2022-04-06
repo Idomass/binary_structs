@@ -1,6 +1,6 @@
 [tool.binary_structs]
 name = "binary_structs"
-version = "1.2.0"
+version = "1.2.1"
 description = "A python library for binary structs"
 authors = [
     "Ido Masubi <idomass@github.com>"

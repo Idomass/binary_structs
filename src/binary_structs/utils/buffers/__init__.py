@@ -1,2 +1,2 @@
-from binary_structs.utils.buffers.typed_buffer import new_typed_buffer
+from binary_structs.utils.buffers.typed_buffer import new_typed_buffer, BufferField
 from binary_structs.utils.buffers.binary_buffer import new_binary_buffer, MaxSizeExceededError

@@ -238,3 +238,27 @@ def test_valid_init_class_dict_and_weakref_not_broken_after_conversion(decorator
     assert A().__dict__ is not B().__dict__
 
     assert A.__weakref__ is not B.__weakref__
+
+
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_init_raw_typed_buffer(decorator):
+    TypedBuffer = new_typed_buffer(uint8_t)
+
+    @binary_struct
+    class A:
+        buf: TypedBuffer
+
+    B = decorator(A)
+    B(TypedBuffer([1, 2, 3]))
+
+
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_init_raw_binary_buffer(decorator):
+    BinaryBuffer = new_binary_buffer(uint8_t, 32)
+
+    @binary_struct
+    class A:
+        buf: BinaryBuffer
+
+    B = decorator(A)
+    B(BinaryBuffer(range(32)))

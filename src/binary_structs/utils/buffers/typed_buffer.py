@@ -8,6 +8,12 @@ from functools import lru_cache
 from binary_structs.utils.binary_field import BinaryField
 
 
+class BufferField(BinaryField):
+    """
+    Empty class, used to differntiate between BinaryFields and BufferFields
+    """
+
+
 @lru_cache
 def new_typed_buffer(underlying_type: BinaryField):
     """
@@ -17,7 +23,7 @@ def new_typed_buffer(underlying_type: BinaryField):
     if not issubclass(underlying_type, BinaryField):
         raise TypeError('Field must implement BinaryField interface!')
 
-    class TypedBuffer(list, BinaryField):
+    class TypedBuffer(list, BufferField):
         """
         TypedBuffer, is a list the enforces type of its elements
         """

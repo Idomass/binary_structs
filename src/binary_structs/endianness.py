@@ -8,6 +8,7 @@ import logging
 from copy import deepcopy
 from binary_structs.utils import *
 from binary_structs.binary_struct import binary_struct, _is_binary_struct
+from binary_structs.utils.buffers.typed_buffer import BufferField
 
 
 def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
@@ -35,6 +36,19 @@ def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: End
     logging.debug(f'Converting {kind} into {new_kind}')
 
     return new_kind
+
+
+def _convert_buffer(buffer: type, endianness: Endianness) -> type:
+    """
+    Convert a TypedBuffer/BinaryBuffer endianness
+    """
+
+    if buffer.__name__ == 'TypedBuffer':
+        return new_typed_buffer(buffer.UNDERLYING_TYPE)
+
+    else:
+        # BinaryBuffer
+        return new_binary_buffer(buffer.UNDERLYING_TYPE, buffer.SIZE)
 
 
 def _convert_class_annotations_endianness(cls, endianness: Endianness):
@@ -106,8 +120,14 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
             # Ignore non-BinaryFields
             new_bases.append(base)
 
-    return _convert_endianness(cls, tuple(new_bases) or (object,), endianness)  \
-           if _is_binary_struct(cls) else type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
+    if _is_binary_struct(cls):
+        return _convert_endianness(cls, tuple(new_bases) or (object,), endianness)
+
+    elif cls is not BufferField and issubclass(cls, BufferField):
+        return _convert_buffer(cls, endianness)
+
+    else:
+        return type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
 
 def endian_decorator(cls, endianness: Endianness):
     if not _is_binary_struct(cls):
