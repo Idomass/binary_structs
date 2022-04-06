@@ -1,117 +1,125 @@
 """
-This file has the implementation for TypedBuffer.
+This file has the implementation for TypedBuffer class.
 It is used by BinaryBuffer and binary_structs.
-It is used to enforce the type that is being added to
-the buffer
+It is used to enforce the type that is being added to the buffer
 """
 
+from functools import lru_cache
 from binary_structs.utils.binary_field import BinaryField
 
 
-class TypedBuffer(list, BinaryField):
+@lru_cache
+def new_typed_buffer(underlying_type: BinaryField):
     """
-    TypedBuffer, is a list the enforces type of its elements
+    Creates a new TypedBuffer class with the given underlying type
     """
 
-    def __init__(self, underlying_type: BinaryField, buf: list = []):
-        if not issubclass(underlying_type, BinaryField):
-            raise TypeError('Field must implement BinaryField interface!')
+    if not issubclass(underlying_type, BinaryField):
+        raise TypeError('Field must implement BinaryField interface!')
 
-        self._underlying_type = underlying_type
-
-        for index, element in enumerate(buf):
-            super().insert(index, self._build_new_element(element))
-
-    def _build_new_element(self, element):
+    class TypedBuffer(list, BinaryField):
         """
-        Validates that element is an instance of the underlying type
-        Attempts to build the underlying type using element if not.
-
-        raises TypeError if it cannot be converted into the underlying type
+        TypedBuffer, is a list the enforces type of its elements
         """
 
-        if isinstance(element, self._underlying_type):
-            return element
+        UNDERLYING_TYPE = underlying_type
 
-        try:
-            return self._underlying_type(element)
+        def __init__(self, buf: list = []):
+            for index, element in enumerate(buf):
+                super().insert(index, self._build_new_element(element))
 
-        except [ValueError, TypeError]:
-            raise TypeError('Trying to add an element of '
-                            f'{type(element)} to buffer of {self._underlying_type}\'s')
+        def _build_new_element(self, element):
+            """
+            Validates that element is an instance of the underlying type
+            Attempts to build the underlying type using element if not.
 
-    def deserialize(self, buf: bytes, size: int = -1):
-        """
-        Deserialize a typed buffer from a bytes object
-        A size parameter can be passed in order to limit the amount
-        of new items that will be created
+            raises TypeError if it cannot be converted into the underlying type
+            """
 
-        NOTE: this will destroy the old buffer
-        """
+            if isinstance(element, underlying_type):
+                return element
 
-        self.clear()
-        underlying_size = self._underlying_type().size_in_bytes
+            try:
+                return underlying_type(element)
 
-        while buf != b'' and size != 0:
-            new_element = self._underlying_type()
-            new_element.deserialize(buf[:underlying_size])
-            self.append(new_element)
+            except [ValueError, TypeError]:
+                raise TypeError('Trying to add an element of '
+                                f'{type(element)} to buffer of {underlying_type}\'s')
 
-            size -= 1
-            buf = buf[underlying_size:]
+        def deserialize(self, buf: bytes, size: int = -1):
+            """
+            Deserialize a typed buffer from a bytes object
+            A size parameter can be passed in order to limit the amount
+            of new items that will be created
 
-        return self
+            NOTE: this will destroy the old buffer
+            """
 
-    def append(self, element) -> None:
-        return super().append(self._build_new_element(element))
+            self.clear()
+            underlying_size = underlying_type().size_in_bytes
 
-    def extend(self, iterable) -> None:
-        return super().extend([self._build_new_element(element) for element in iterable])
+            while buf != b'' and size != 0:
+                new_element = underlying_type()
+                new_element.deserialize(buf[:underlying_size])
+                self.append(new_element)
 
-    def insert(self, index, element) -> None:
-        return super().insert(index, self._build_new_element(element))
+                size -= 1
+                buf = buf[underlying_size:]
 
-    def __getitem__(self, index_or_slice):
-        if isinstance(index_or_slice, slice):
-            return TypedBuffer(self._underlying_type, super().__getitem__(index_or_slice))
+            return self
 
-        else:
-            return super().__getitem__(index_or_slice)
+        def append(self, element) -> None:
+            return super().append(self._build_new_element(element))
 
-    def __setitem__(self, index_or_slice, element) -> None:
-        if isinstance(index_or_slice, slice):
-            return super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])
+        def extend(self, iterable) -> None:
+            return super().extend([self._build_new_element(element) for element in iterable])
 
-        else:
-            return super().__setitem__(index_or_slice, self._build_new_element(element))
+        def insert(self, index, element) -> None:
+            return super().insert(index, self._build_new_element(element))
 
-    def __iadd__(self, iterable):
-        return super().__iadd__([self._build_new_element(element) for element in iterable])
+        def __getitem__(self, index_or_slice):
+            if isinstance(index_or_slice, slice):
+                return TypedBuffer(super().__getitem__(index_or_slice))
 
-    def __str__(self) -> str:
-        return f'[{", ".join(str(element) for element in self)}]'
+            else:
+                return super().__getitem__(index_or_slice)
 
-    def __bytes__(self) -> bytes:
-        return b''.join(bytes(element) for element in self)
+        def __setitem__(self, index_or_slice, element) -> None:
+            if isinstance(index_or_slice, slice):
+                return super().__setitem__(index_or_slice, [self._build_new_element(i) for i in element])
 
-    @property
-    def size_in_bytes(self):
-        return sum(element.size_in_bytes for element in self)
+            else:
+                return super().__setitem__(index_or_slice, self._build_new_element(element))
 
-    @staticmethod
-    def from_bytes(underlying_type: type, buf: bytes):
-        """
-        Creates a binary buffer from a bytes object
-        """
+        def __iadd__(self, iterable):
+            return super().__iadd__([self._build_new_element(element) for element in iterable])
 
-        field_size = underlying_type().size_in_bytes
-        assert len(buf) % field_size == 0, 'Got invalid buffer length!'
+        def __str__(self) -> str:
+            return f'[{", ".join(str(element) for element in self)}]'
 
-        arr = []
-        while buf != b'':
-            element = underlying_type()
-            element.deserialize(buf[:field_size])
-            arr.append(element)
-            buf = buf[field_size:]
+        def __bytes__(self) -> bytes:
+            return b''.join(bytes(element) for element in self)
 
-        return TypedBuffer(underlying_type, arr)
+        @property
+        def size_in_bytes(self):
+            return sum(element.size_in_bytes for element in self)
+
+        @staticmethod
+        def from_bytes(buf: bytes):
+            """
+            Creates a binary buffer from a bytes object
+            """
+
+            field_size = underlying_type().size_in_bytes
+            assert len(buf) % field_size == 0, 'Got invalid buffer length!'
+
+            arr = []
+            while buf != b'':
+                element = underlying_type()
+                element.deserialize(buf[:field_size])
+                arr.append(element)
+                buf = buf[field_size:]
+
+            return TypedBuffer(arr)
+
+    return TypedBuffer

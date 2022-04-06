@@ -15,7 +15,7 @@ import sys
 import logging
 import inspect
 
-from binary_structs.utils import BinaryField, BinaryBuffer, TypedBuffer
+from binary_structs.utils import BinaryField, new_binary_buffer, new_typed_buffer
 
 from enum import Enum
 from collections import OrderedDict
@@ -157,13 +157,13 @@ def _set_binary_attr(self: type, field_name: str, field_value):
 
     field = getattr(self, field_name)
 
-    if type(field) is TypedBuffer:
-        new_buf = TypedBuffer(field._underlying_type, field_value)
+    if getattr(field, '__name__', '') == 'TypedBuffer':
+        new_buf = new_typed_buffer(field.UNDERLYING_TYPE)(field_value)
 
         object.__setattr__(self, field_name, new_buf)
 
-    elif type(field) is BinaryBuffer:
-        new_buf = BinaryBuffer(field._underlying_type, field._size, field_value)
+    elif getattr(field, '__name__', '') == 'BinaryBuffer':
+        new_buf = new_binary_buffer(field.UNDERLYING_TYPE, len(field))(field_value)
 
         object.__setattr__(self, field_name, new_buf)
 
@@ -189,7 +189,7 @@ def _init_var(name: str, annotation, globals: dict, default_value: type) -> list
         annotation, size = annotation
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var =  [f'{name} = BinaryBuffer({type_name}, {size}, '
+        init_var =  [f'{name} = new_binary_buffer({type_name}, {size})('
                                            f'{name} or {name}_default_value or [])']
         init_var += [f'object.__setattr__(self, "{name}", {name})']
 
@@ -197,7 +197,7 @@ def _init_var(name: str, annotation, globals: dict, default_value: type) -> list
         annotation = annotation[0]
         type_name = _insert_type_to_globals(annotation, globals)
 
-        init_var =  [f'{name} = TypedBuffer({type_name}, '
+        init_var =  [f'{name} = new_typed_buffer({type_name})('
                                           f'{name} or {name}_default_value or [])']
         init_var += [f'object.__setattr__(self, "{name}", {name})']
 
@@ -420,8 +420,8 @@ def _process_class(cls):
     logging.debug(f'Processing {cls}')
 
     globals = sys.modules[cls.__module__].__dict__.copy()
-    globals['BinaryBuffer'] = BinaryBuffer
-    globals['TypedBuffer'] = TypedBuffer
+    globals['new_binary_buffer'] = new_binary_buffer
+    globals['new_typed_buffer'] = new_typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
     logging.debug(f'Found annotations: {annotations}')

@@ -13,10 +13,6 @@ available_decorators = [
 ]
 
 # buffers
-@pytest.fixture
-def typed_buffer():
-    return TypedBuffer(le_uint8_t, [97] * 20)
-
 # binary_structs
 # Classes
 class SomeBaseClass:
