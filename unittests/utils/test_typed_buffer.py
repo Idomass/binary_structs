@@ -191,7 +191,7 @@ from_bytes_arr += [(field, b'') for field in binary_fields]
 
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
 def test_valid_from_bytes(underlying_type, buf):
-    a = TypedBuffer.from_bytes(underlying_type, buf)
+    a = new_typed_buffer(underlying_type).from_bytes(buf)
 
     assert bytes(a) == buf
 
@@ -199,4 +199,4 @@ from_bytes_arr = [(field, urandom((field().size_in_bytes * 5) + 1)) for field in
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
 def test_invalid_from_bytes(underlying_type, buf):
     with pytest.raises(AssertionError):
-        TypedBuffer.from_bytes(underlying_type, buf)
+        new_typed_buffer(underlying_type).from_bytes(buf)

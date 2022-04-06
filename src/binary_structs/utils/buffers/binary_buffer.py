@@ -92,8 +92,8 @@ def new_binary_buffer(underlying_type: type, size: int):
                 return super().__getitem__(index_or_slice)
 
         @staticmethod
-        def from_bytes(underlying_type: type, buf: bytes):
-            typed_buf = TypedBuffer.from_bytes(underlying_type, buf)
+        def from_bytes(buf: bytes):
+            typed_buf = TypedBuffer.from_bytes(buf)
 
             return BinaryBuffer(typed_buf)
 

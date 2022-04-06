@@ -23,6 +23,8 @@ def new_typed_buffer(underlying_type: BinaryField):
         TypedBuffer, is a list the enforces type of its elements
         """
 
+        UNDERLYING_TYPE = underlying_type
+
         def __init__(self, buf: list = []):
             for index, element in enumerate(buf):
                 super().insert(index, self._build_new_element(element))
@@ -104,7 +106,7 @@ def new_typed_buffer(underlying_type: BinaryField):
             return sum(element.size_in_bytes for element in self)
 
         @staticmethod
-        def from_bytes(underlying_type: type, buf: bytes):
+        def from_bytes(buf: bytes):
             """
             Creates a binary buffer from a bytes object
             """
@@ -119,6 +121,6 @@ def new_typed_buffer(underlying_type: BinaryField):
                 arr.append(element)
                 buf = buf[field_size:]
 
-            return TypedBuffer(underlying_type, arr)
+            return TypedBuffer(arr)
 
     return TypedBuffer

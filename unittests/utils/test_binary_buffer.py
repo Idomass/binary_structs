@@ -132,13 +132,15 @@ from_bytes_arr += [(field, b'') for field in binary_fields]
 
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
 def test_valid_from_bytes(underlying_type, buf):
-    a = BinaryBuffer.from_bytes(underlying_type, buf)
+    size = len(buf) // underlying_type().size_in_bytes
+    a = new_binary_buffer(underlying_type, size).from_bytes(buf)
 
-    assert isinstance(a, BinaryBuffer)
+    assert isinstance(a, new_binary_buffer(underlying_type, size))
     assert bytes(a) == buf
 
 from_bytes_arr = [(field, urandom((field().size_in_bytes * 5) + 1)) for field in binary_fields if field().size_in_bytes != 1]
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
 def test_invalid_from_bytes(underlying_type, buf):
     with pytest.raises(AssertionError):
-        BinaryBuffer.from_bytes(underlying_type, buf)
+        size = len(buf) // underlying_type().size_in_bytes
+        new_binary_buffer(underlying_type, size).from_bytes(buf)
