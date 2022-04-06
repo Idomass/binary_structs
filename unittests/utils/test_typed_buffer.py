@@ -3,21 +3,26 @@ import pytest
 from os import urandom
 
 from conftest import binary_fields
-from binary_structs import TypedBuffer, uint32_t, uint8_t, le_uint8_t
+from binary_structs import new_typed_buffer, uint32_t, uint8_t, le_uint8_t
 
+# Fixtures
+@pytest.fixture
+def typed_buffer():
+    return new_typed_buffer(le_uint8_t)([97] * 20)
 
+# Tests
 def test_valid_init():
-    a = TypedBuffer(uint8_t, [1, 2, 3])
+    a = new_typed_buffer(uint8_t)([1, 2, 3])
 
     assert isinstance(a[0], uint8_t)
     assert a == [1, 2, 3]
 
 def test_invalid_init():
     with pytest.raises(TypeError):
-        TypedBuffer(uint8_t, ['BadValue'])
+        new_typed_buffer(uint8_t)(['BadValue'])
 
 def test_valid_init_different_ctor():
-    a = TypedBuffer(uint8_t, [97] * 50)
+    a = new_typed_buffer(uint8_t)([97] * 50)
 
     assert a == [97] * 50
 
@@ -127,17 +132,17 @@ def test_valid_slicing(typed_buffer):
     sub_buf = typed_buffer[:]
 
     assert sub_buf is not typed_buffer
-    assert isinstance(sub_buf, TypedBuffer)
+    assert isinstance(sub_buf, type(typed_buffer))
     assert sub_buf == typed_buffer
 
 def test_valid_slicing_empty(typed_buffer):
     sub_buf = typed_buffer[1000:]
 
-    assert isinstance(sub_buf, TypedBuffer)
+    assert isinstance(sub_buf, type(typed_buffer))
     assert sub_buf == []
 
 def test_valid_serialization_empty():
-    assert bytes(TypedBuffer(uint8_t)) == b''
+    assert bytes(new_typed_buffer(uint8_t)()) == b''
 
 def test_valid_serialization(typed_buffer):
     assert bytes(typed_buffer) == b'a' * 20
@@ -146,7 +151,7 @@ def test_valid_size(typed_buffer):
     assert typed_buffer.size_in_bytes == 20
 
 def test_valid_size_empty():
-    a = TypedBuffer(uint8_t)
+    a = new_typed_buffer(uint8_t)()
 
     assert a.size_in_bytes == 0
 
@@ -164,7 +169,7 @@ def test_valid_deserialization_non_empty(typed_buffer):
 
 def test_invalid_deserialization_buffer_to_small():
     with pytest.raises(ValueError):
-        TypedBuffer(uint32_t).deserialize(b'\xde\xad\xbe\xef\xff')
+        new_typed_buffer(uint32_t)().deserialize(b'\xde\xad\xbe\xef\xff')
 
 def test_valid_deserialization_size(typed_buffer):
     typed_buffer.deserialize(b'\xff' * 10, size=3)
