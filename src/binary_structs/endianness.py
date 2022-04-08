@@ -48,7 +48,7 @@ def _convert_buffer(buffer: type, endianness: Endianness) -> type:
 
     else:
         # BinaryBuffer
-        return new_binary_buffer(buffer.UNDERLYING_TYPE, buffer.SIZE)
+        return new_binary_buffer(buffer.UNDERLYING_TYPE, buffer.static_size)
 
 
 def _convert_class_annotations_endianness(cls, endianness: Endianness):
@@ -88,9 +88,12 @@ def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: En
 
     logging.debug(f'Converting endianness for {cls}')
 
+    # A field is consider valid if it is not a generated function
+    is_field_valid = lambda field: not hasattr(field, 'bs_generated_func')
+
     # Filter out previously generated functions
-    is_a_valid_field = lambda field: not callable(field[1]) or not hasattr(field[1], 'bs_generated_func')
-    new_dict = dict(filter(is_a_valid_field, cls.__dict__.items()))
+    new_dict = {field_name: field_value for field_name, field_value in cls.__dict__.items()
+                if is_field_valid(field_value)}
 
     new_dict['__annotations__'] = dict(deepcopy(cls.__dict__.get('__annotations__', {})))
 
@@ -128,6 +131,7 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
 
     else:
         return type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
+
 
 def endian_decorator(cls, endianness: Endianness):
     if not _is_binary_struct(cls):

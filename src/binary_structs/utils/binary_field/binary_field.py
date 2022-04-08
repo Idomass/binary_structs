@@ -36,10 +36,6 @@ class BinaryField:
     """
 
     @abstractmethod
-    def deserialize(self, buffer):
-        pass
-
-    @abstractmethod
     def __bytes__(self) -> bytes:
         pass
 
@@ -97,12 +93,14 @@ class PrimitiveTypeField(BinaryField):
         ctypes_parent = type(self).__base__.__bases__[1]
         ctypes_parent.__init__(self, value)
 
-    def deserialize(self, buffer):
-        if len(buffer) < self.size_in_bytes:
+    @classmethod
+    def deserialize(cls, buffer):
+        if len(buffer) < ctypes.sizeof(cls):
             raise ValueError('Given buffer is too small!')
 
-        self.__init__(struct.unpack(self.FORMAT, buffer)[0])
+        return cls(struct.unpack(cls.FORMAT, buffer[:ctypes.sizeof(cls)])[0])
 
+    # TODO, get rid of it
     @property
     def size_in_bytes(self):
         return ctypes.sizeof(self)
@@ -167,6 +165,7 @@ def endian_field(cls, format: str):
 
     def wrap(cls):
         cls.FORMAT = f'{format}{cls.FORMAT}'
+        cls.static_size = ctypes.sizeof(cls)
         return cls
 
     if cls is None:

@@ -4,7 +4,8 @@ from copy import deepcopy
 from binary_structs import MaxSizeExceededError
 from conftest import EmptyClass, empty_decorator, test_structs
 
-from binary_structs import binary_struct, big_endian, little_endian, uint8_t, le_uint8_t
+from binary_structs import binary_struct, big_endian, little_endian,    \
+                           uint8_t, le_uint8_t, le_uint32_t
 
 
 @pytest.mark.skip(reason='#TODO Cant figure a way to pass it for now')
@@ -178,3 +179,34 @@ def test_invalid_item_assignment_nested_kwargs(NestedClassFixture):
 
     with pytest.raises(TypeError):
         a.buffer = {'bad': 32}
+
+def test_valid_dict_conversion_simple(SimpleClassFixture):
+    assert dict(SimpleClassFixture(a=7)) == {'a': le_uint8_t(7)}
+
+
+def test_valid_dict_conversion_nested(NestedClassFixture, BufferClassFixture):
+    nested = NestedClassFixture(buffer=[5, range(3)], magic=42)
+
+    assert dict(nested) == {'buffer': BufferClassFixture(5, range(3)), 'magic': le_uint32_t(42)}
+
+
+def test_valid_dict_conversion_inheritence(InheritedClassFixture):
+    inherited = InheritedClassFixture(5, range(7), 9)
+
+    assert dict(inherited) == {'size': le_uint32_t(5), 'buf': list(range(7)) + [0] * 25, 'magic': le_uint32_t(9)}
+
+
+def test_valid_class_static_size(SimpleClassFixture):
+    assert SimpleClassFixture.static_size == 1
+
+
+def test_valid_class_static_size_dynamic(DynamicClassFixture):
+    assert DynamicClassFixture.static_size == 1
+
+
+def test_valid_class_static_size_inherited(InheritedClassFixture):
+    assert InheritedClassFixture.static_size == 40
+
+
+def test_valid_class_static_size_nested(NestedClassFixture):
+    assert NestedClassFixture.static_size == 40

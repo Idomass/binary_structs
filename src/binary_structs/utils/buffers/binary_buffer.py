@@ -29,7 +29,7 @@ def new_binary_buffer(underlying_type: type, size: int):
         and the passed parameter.
         """
 
-        SIZE = size
+        static_size = size
 
         def __init__(self, buf: list = []):
             """
@@ -46,22 +46,23 @@ def new_binary_buffer(underlying_type: type, size: int):
             for index in range(len(self), size):
                 super().insert(index, underlying_type())
 
-        def deserialize(self, buf: bytes):
-            underlying_size = underlying_type().size_in_bytes
+        @classmethod
+        def deserialize(cls, buf: bytes):
+            new_buf = cls()
+            underlying_size = underlying_type.static_size
 
-            for index in range(len(self)):
-                new_element = underlying_type()
-                new_element.deserialize(buf[:underlying_size])
-                self.__setitem__(index, new_element)
+            for index in range(size):
+                new_element = underlying_type.deserialize(buf[:underlying_size])
+                new_buf.__setitem__(index, new_element)
 
                 buf = buf[underlying_size:]
 
-            return self
+            return new_buf
 
         def clear(self) -> None:
             super().clear()
             # Fill with empty instances
-            for index in range(len(self), size):
+            for index in range(size):
                 super().insert(index, underlying_type())
 
         def remove(self, value) -> None:

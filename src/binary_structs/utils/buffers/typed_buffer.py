@@ -28,6 +28,7 @@ def new_typed_buffer(underlying_type: BinaryField):
         TypedBuffer, is a list the enforces type of its elements
         """
 
+        static_size = 0
         UNDERLYING_TYPE = underlying_type
 
         def __init__(self, buf: list = []):
@@ -52,7 +53,8 @@ def new_typed_buffer(underlying_type: BinaryField):
                 raise TypeError('Trying to add an element of '
                                 f'{type(element)} to buffer of {underlying_type}\'s')
 
-        def deserialize(self, buf: bytes, size: int = -1):
+        @classmethod
+        def deserialize(cls, buf: bytes, size: int = -1):
             """
             Deserialize a typed buffer from a bytes object
             A size parameter can be passed in order to limit the amount
@@ -61,18 +63,17 @@ def new_typed_buffer(underlying_type: BinaryField):
             NOTE: this will destroy the old buffer
             """
 
-            self.clear()
-            underlying_size = underlying_type().size_in_bytes
+            new_buf = cls()
+            underlying_size = underlying_type.static_size
 
             while buf != b'' and size != 0:
-                new_element = underlying_type()
-                new_element.deserialize(buf[:underlying_size])
-                self.append(new_element)
+                new_element = underlying_type.deserialize(buf[:underlying_size])
+                new_buf.append(new_element)
 
                 size -= 1
                 buf = buf[underlying_size:]
 
-            return self
+            return new_buf
 
         def append(self, element) -> None:
             return super().append(self._build_new_element(element))
@@ -116,13 +117,12 @@ def new_typed_buffer(underlying_type: BinaryField):
             Creates a binary buffer from a bytes object
             """
 
-            field_size = underlying_type().size_in_bytes
+            field_size = underlying_type.static_size
             assert len(buf) % field_size == 0, 'Got invalid buffer length!'
 
             arr = []
             while buf != b'':
-                element = underlying_type()
-                element.deserialize(buf[:field_size])
+                element = underlying_type.deserialize(buf[:field_size])
                 arr.append(element)
                 buf = buf[field_size:]
 

@@ -158,13 +158,13 @@ def test_valid_size_empty():
 
     assert a.size_in_bytes == 0
 
-def test_valid_deserialization_empty(typed_buffer):
-    typed_buffer.deserialize(b'')
+def test_valid_deserialization_empty():
+    typed_buffer = new_typed_buffer(uint32_t).deserialize(b'')
 
     assert typed_buffer.size_in_bytes == 0
 
-def test_valid_deserialization_non_empty(typed_buffer):
-    typed_buffer.deserialize(b'\xde\xad')
+def test_valid_deserialization_non_empty():
+    typed_buffer = new_typed_buffer(uint8_t).deserialize(b'\xde\xad')
 
     assert typed_buffer.size_in_bytes == 2
     assert typed_buffer[0] == 0xde
@@ -174,19 +174,8 @@ def test_invalid_deserialization_buffer_to_small():
     with pytest.raises(ValueError):
         new_typed_buffer(uint32_t)().deserialize(b'\xde\xad\xbe\xef\xff')
 
-def test_valid_deserialization_size(typed_buffer):
-    typed_buffer.deserialize(b'\xff' * 10, size=3)
-
-    assert typed_buffer.size_in_bytes == 3
-    assert typed_buffer == [0xff] * 3
-
-def test_valid_deserialzation_empty_size(typed_buffer):
-    typed_buffer.deserialize(b'\xff' * 15, size=0)
-
-    assert typed_buffer.size_in_bytes == 0
-
 # Conversions
-from_bytes_arr = [(field, urandom(field().size_in_bytes * 5)) for field in binary_fields]
+from_bytes_arr = [(field, urandom(field.static_size * 5)) for field in binary_fields]
 from_bytes_arr += [(field, b'') for field in binary_fields]
 
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
@@ -195,7 +184,7 @@ def test_valid_from_bytes(underlying_type, buf):
 
     assert bytes(a) == buf
 
-from_bytes_arr = [(field, urandom((field().size_in_bytes * 5) + 1)) for field in binary_fields if field().size_in_bytes != 1]
+from_bytes_arr = [(field, urandom((field.static_size * 5) + 1)) for field in binary_fields if field.static_size != 1]
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
 def test_invalid_from_bytes(underlying_type, buf):
     with pytest.raises(AssertionError):
