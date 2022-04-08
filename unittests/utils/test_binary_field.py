@@ -48,17 +48,13 @@ def test_valid_size(underlying_type, default_value, size, buf):
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_valid_deserialization(underlying_type, default_value, size, buf):
-    a = underlying_type()
-
-    a.deserialize(buf)
+    a = underlying_type.deserialize(buf)
     assert a == default_value
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_invalid_deserialization_empty(underlying_type, default_value, size, buf):
-    a = underlying_type()
-
     with pytest.raises(ValueError):
-        a.deserialize(b'')
+        underlying_type.deserialize(b'')
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_valid_serialization(underlying_type, default_value, size, buf):
@@ -103,9 +99,8 @@ def _get_random_bytes_buffer(size, max_size):
 
 @pytest.mark.parametrize('field_type', binary_fields)
 def test_bitwise_not(field_type):
-    num = field_type()
-    buf = _get_random_bytes_buffer(num.size_in_bytes, num.size_in_bytes)
-    num.deserialize(buf)
+    buf = _get_random_bytes_buffer(field_type().size_in_bytes, field_type().size_in_bytes)
+    num = field_type.deserialize(buf)
 
     assert ~num == bytes(~x & 0xff for x in buf)
 
@@ -118,8 +113,8 @@ def test_bitwise_operator2(type1, type2, operand):
     buf1 = _get_random_bytes_buffer(num1.size_in_bytes, bigger_num_size)
     buf2 = _get_random_bytes_buffer(num2.size_in_bytes, bigger_num_size)
 
-    num1.deserialize(buf1[:num1.size_in_bytes])
-    num2.deserialize(buf2[:num2.size_in_bytes])
+    num1 = type1.deserialize(buf1[:num1.size_in_bytes])
+    num2 = type2.deserialize(buf2[:num2.size_in_bytes])
 
     bitwised_buf = bytes(getattr(int, operand)(a, b) for (a, b) in zip(buf1, buf2))
 

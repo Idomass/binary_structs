@@ -39,7 +39,6 @@ def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], 
     exec(fn_text, globals, ns)
 
     fn = ns[name]
-    setattr(fn, 'bs_generated_func', True)
 
     return ns[name]
 
@@ -272,27 +271,25 @@ def _create_deserialize_fn(binary_fields: dict, globals: dict, bases: tuple[type
     The function will first deserialize parent classes, then the class attributes
     """
 
-    lines = []
+    lines = ['init_dict = {}']
 
     # For this class bases
     for parent in bases:
         if not _is_parent_fn_callable(parent, 'deserialize'):
             continue
 
-        lines.append(f'{parent.__name__}.deserialize(self, buf)')
-        lines.append(f'buf = buf[{parent.__name__}._bs_size(self):]')
+        lines.append(f'init_dict.update(dict({parent.__name__}.deserialize(buf)))')
+        lines.append(f'buf = buf[{parent.__name__}().size_in_bytes:]')
 
     # For this class attributes
-    for name, kind in binary_fields.items():
-        if getattr(kind, '__name__', '') == 'TypedBuffer':
-            lines.append(f'self.{name}.deserialize(buf)')
+    for name in binary_fields:
+        lines.append(f'init_dict["{name}"] = cls.{name}_type.deserialize(buf)')
 
-        else:
-            lines.append(f'self.{name}.deserialize(buf[:self.{name}.size_in_bytes])')
+        lines.append(f'buf = buf[cls.{name}_type().size_in_bytes:]')
 
-        lines.append(f'buf = buf[self.{name}.size_in_bytes:]')
+    lines.append('return cls(**init_dict)')
 
-    return _create_fn('deserialize', ['self, buf'], lines + ['return self'], globals)
+    return _create_fn('deserialize', ['cls, buf'], lines or ['pass'], globals)
 
 
 def _create_size_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
@@ -328,7 +325,10 @@ def _is_binary_struct(cls: type):
 
 
 def _is_parent_fn_callable(parent: type, fn_name: str):
-    return parent.__name__ != 'BinaryField' and inspect.isfunction(getattr(parent, fn_name, None))
+    fn = getattr(parent, fn_name, None)
+    is_fn = inspect.isfunction(fn) or inspect.ismethod(fn)
+
+    return parent.__name__ != 'BinaryField' and is_fn
 
 
 def _get_binary_fields_recursively(cls: type) -> OrderedDict:
@@ -434,12 +434,17 @@ def _process_class(cls):
         '__bytes__':    _create_bytes_fn(binary_fields, globals, cls.__bases__),
         '_bs_size':     _create_size_fn(binary_fields, globals, cls.__bases__),
         '__iter__':     _create_iter_fn(binary_fields, globals, cls.__bases__),
-        'deserialize':  _create_deserialize_fn(binary_fields, globals, cls.__bases__),
+        'deserialize':  classmethod(_create_deserialize_fn(binary_fields, globals, cls.__bases__)),
     }
 
     for name, fn in generated_fns.items():
+        # Mark the generated functions
+        setattr(fn, 'bs_generated_func', True)
+
+        # Add them to the class, if a custom-implemented one exists,
+        # add them with the class name as prefix
         new_fn_name = f'{cls.__name__}{name}' if name in cls.__dict__ else name
-        assert new_fn_name not in cls.__dict__, 'Illegal name used for function'
+        assert new_fn_name not in cls.__dict__, f'Illegal name "{new_fn_name}" used for function'
         setattr(cls, new_fn_name, fn)
 
     # Add other attributes

@@ -105,25 +105,25 @@ def test_invalid_remove():
         new_binary_buffer(uint8_t, 10)([0x41] * 10).remove(0x41)
 
 def test_valid_deserialization_empty():
-    a = new_binary_buffer(uint8_t, 0)().deserialize(b'')
+    a = new_binary_buffer(uint8_t, 0).deserialize(b'')
 
     assert a.size_in_bytes == 0
 
 def test_valid_deserialization_non_empty():
-    a = new_binary_buffer(uint8_t, 4)().deserialize(b'\xff' * 4)
+    a = new_binary_buffer(uint8_t, 4).deserialize(b'\xff' * 4)
 
     assert a.size_in_bytes == 4
     assert a == [0xff] * 4
 
 def test_valid_deserialization_buffer_too_big():
-    a = new_binary_buffer(uint8_t, 8)().deserialize(b'\xde' * 10)
+    a = new_binary_buffer(uint8_t, 8).deserialize(b'\xde' * 10)
 
     assert a.size_in_bytes == 8
     assert a == [0xde] * 8
 
 def test_invalid_deserialization_buffer_too_small():
     with pytest.raises(ValueError):
-        new_binary_buffer(uint8_t, 4)().deserialize(b'\xff' * 2)
+        new_binary_buffer(uint8_t, 4).deserialize(b'\xff' * 2)
 
 
 # Conversions
