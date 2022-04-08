@@ -2,8 +2,14 @@
 ## General
 The main idea behind BinaryStruct, is to have a pythonic and easy way to work with binary data.
 
-The library uses `type hints` in order auto-implement a serialization function, deserialization function,
-an `__init__` method, and more.
+The library uses `type hints` in order generate these functions:
+- `__init__`    - An init function that enforces types
+- `__bytes__`   - Allows to serialize the class
+- `deserialize` - A `classmethod` that will create a new instance from binary data
+- `__eq__`      - Allows comparsion between different instances
+- `__str__`     - Converts struct to a string
+- `__iter__`    - Allows converting the class into a `dict`
+- `size_in_bytes`   - Pretty straightforward
 
 
 ## API examples
@@ -108,7 +114,7 @@ In:     bytes(buf)
 Out:    b'\x00\x00\x00\x10\x00\x01\x02\x03\x04\x05\x06\x07'
 ```
 
-If we want to change the endianity of exsiting class without redefining it, we can simply use:
+If we want to change the endianness of exsiting class without redefining it, we can simply use:
 ```python
 @big_endian
 class BEMagicalBufferWithSize(MagicalBufferWithSize):
@@ -118,7 +124,7 @@ class BEMagicalBufferWithSize(MagicalBufferWithSize):
 Both `magic` and `data` will be converted to Big endian versions in this example.
 
 ### Custom implementations
-We can always add a custom implementation to override the auto-implementation:
+We can always add a custom implementation to override the code generation:
 ```python
 @binary_struct
 class BufferWithSize:
@@ -156,6 +162,7 @@ passed to it has the same type as the underlying type it was declared with.
 A `BinaryBuffer` is a `TypedBuffer` that also enforces size, and it will create empty instances of its underlying type when
 it is created
 
+# Dev
 ## Known issues
 ### Endianness conversion [WIP]
 Endianness converstion had 2 main issues:
@@ -189,7 +196,7 @@ Endianness converstion had 2 main issues:
     NewBase = Nested.__annotations__['base'][0]
     ```
 
-#### Applied solution
+#### Attempted solution
 As suggested, a caching system was added to handle the overhead, and performence skyrocketed since starting to use it.
 Unfortunately, this got very complex after implementing default value support.
 
@@ -204,24 +211,7 @@ The nested fields issue have now 2 elegant solutions:
     a = Nested(base=[5], 3)
     ```
 
-## Done Tasks
-- [X] Minimize class copying
-- [X] Full default value support
-- [X] Full Deserialization support
-- [X] Test coverage for `little_endian`
-- [X] Caching support
-- [X] More test cases for inheritance
-- [X] Add `__eq__` operator
-- [X] Add default values
-- [X] Bitwise operations
-- [X] Add `__str__` and `__repr__`
-- [X] Lint the code
-- [X] Spell inheritance correctly
-- [X] Old type initialization support
-- [X] Slicing support
-- [X] Assignment support, fields shouldn't be overwritten
-
-## WIP/TODO Features
+## Future ideas
 - [ ] Github actions support
 - [ ] Convertions support (`.h` files, `.so`, `ctypes`)
 - [ ] Make the struct sequential in memory
@@ -229,5 +219,6 @@ The nested fields issue have now 2 elegant solutions:
 - [ ] Use sphinx docs
 - [ ] Add `/` operator between `binary_struct` instances
 - [ ] Add control over individual fields
-- [ ] Add support for factory classes
 - [ ] A `@binary_union` decorator
+- [ ] Readonly classes/fields
+- [ ] Redesign endianness convertions
