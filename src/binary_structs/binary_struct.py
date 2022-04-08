@@ -284,7 +284,7 @@ def _create_equal_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
 
     globals['BinaryField'] = BinaryField
     lines = [
-        'if not isinstance(other, BinaryField):\n',
+        'if not isinstance(other, BinaryField):',
         '    return False'
     ]
 
@@ -326,6 +326,26 @@ def _create_string_fn(attributes: dict, globals: dict, bases: tuple[type]) -> st
     lines += ['return string']
 
     return _create_fn('__str__', ['self'], lines, globals)
+
+
+def _create_iter_fn(attributes: dict, globals: dict, bases: tuple[type]):
+    """
+    Creates the __iter__ function to allow dict conversion
+    """
+
+    lines = []
+
+    for parent in bases:
+        if not _is_parent_fn_callable(parent, '__iter__'):
+            continue
+
+        lines.append(f'for attr, value in {parent.__name__}.__iter__(self):')
+        lines.append('    yield attr, value')
+
+    for name in attributes:
+        lines.append(f'yield "{name}", self.{name}')
+
+    return _create_fn('__iter__', ['self'], lines or ['pass'], globals)
 
 
 def _create_deserialize_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
@@ -453,6 +473,7 @@ def _process_class(cls):
         '__init__':     _create_init_fn(binary_attrs, globals, cls.__bases__),
         '__bytes__':    _create_bytes_fn(annotations, globals, cls.__bases__),
         '_bs_size':     _create_size_fn(annotations, globals, cls.__bases__),
+        '__iter__':     _create_iter_fn(annotations, globals, cls.__bases__),
         'deserialize':  _create_deserialize_fn(annotations, globals, cls.__bases__),
     }
 
