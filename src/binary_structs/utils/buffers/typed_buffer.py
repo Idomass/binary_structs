@@ -28,6 +28,7 @@ def new_typed_buffer(underlying_type: BinaryField):
         TypedBuffer, is a list the enforces type of its elements
         """
 
+        static_size = 0
         UNDERLYING_TYPE = underlying_type
 
         def __init__(self, buf: list = []):
@@ -63,7 +64,7 @@ def new_typed_buffer(underlying_type: BinaryField):
             """
 
             new_buf = cls()
-            underlying_size = underlying_type().size_in_bytes
+            underlying_size = underlying_type.static_size
 
             while buf != b'' and size != 0:
                 new_element = underlying_type.deserialize(buf[:underlying_size])
@@ -116,7 +117,7 @@ def new_typed_buffer(underlying_type: BinaryField):
             Creates a binary buffer from a bytes object
             """
 
-            field_size = underlying_type().size_in_bytes
+            field_size = underlying_type.static_size
             assert len(buf) % field_size == 0, 'Got invalid buffer length!'
 
             arr = []

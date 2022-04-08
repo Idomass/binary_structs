@@ -175,7 +175,7 @@ def test_invalid_deserialization_buffer_to_small():
         new_typed_buffer(uint32_t)().deserialize(b'\xde\xad\xbe\xef\xff')
 
 # Conversions
-from_bytes_arr = [(field, urandom(field().size_in_bytes * 5)) for field in binary_fields]
+from_bytes_arr = [(field, urandom(field.static_size * 5)) for field in binary_fields]
 from_bytes_arr += [(field, b'') for field in binary_fields]
 
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
@@ -184,7 +184,7 @@ def test_valid_from_bytes(underlying_type, buf):
 
     assert bytes(a) == buf
 
-from_bytes_arr = [(field, urandom((field().size_in_bytes * 5) + 1)) for field in binary_fields if field().size_in_bytes != 1]
+from_bytes_arr = [(field, urandom((field.static_size * 5) + 1)) for field in binary_fields if field.static_size != 1]
 @pytest.mark.parametrize('underlying_type, buf', from_bytes_arr)
 def test_invalid_from_bytes(underlying_type, buf):
     with pytest.raises(AssertionError):

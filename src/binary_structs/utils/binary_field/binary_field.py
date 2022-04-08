@@ -100,6 +100,7 @@ class PrimitiveTypeField(BinaryField):
 
         return cls(struct.unpack(cls.FORMAT, buffer[:ctypes.sizeof(cls)])[0])
 
+    # TODO, get rid of it
     @property
     def size_in_bytes(self):
         return ctypes.sizeof(self)
@@ -164,6 +165,7 @@ def endian_field(cls, format: str):
 
     def wrap(cls):
         cls.FORMAT = f'{format}{cls.FORMAT}'
+        cls.static_size = ctypes.sizeof(cls)
         return cls
 
     if cls is None:

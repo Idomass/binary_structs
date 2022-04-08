@@ -99,7 +99,7 @@ def _get_random_bytes_buffer(size, max_size):
 
 @pytest.mark.parametrize('field_type', binary_fields)
 def test_bitwise_not(field_type):
-    buf = _get_random_bytes_buffer(field_type().size_in_bytes, field_type().size_in_bytes)
+    buf = _get_random_bytes_buffer(field_type.static_size, field_type.static_size)
     num = field_type.deserialize(buf)
 
     assert ~num == bytes(~x & 0xff for x in buf)

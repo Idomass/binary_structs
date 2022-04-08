@@ -279,13 +279,13 @@ def _create_deserialize_fn(binary_fields: dict, globals: dict, bases: tuple[type
             continue
 
         lines.append(f'init_dict.update(dict({parent.__name__}.deserialize(buf)))')
-        lines.append(f'buf = buf[{parent.__name__}().size_in_bytes:]')
+        lines.append(f'buf = buf[{parent.__name__}.static_size:]')
 
     # For this class attributes
     for name in binary_fields:
         lines.append(f'init_dict["{name}"] = cls.{name}_type.deserialize(buf)')
 
-        lines.append(f'buf = buf[cls.{name}_type().size_in_bytes:]')
+        lines.append(f'buf = buf[cls.{name}_type.static_size:]')
 
     lines.append('return cls(**init_dict)')
 
@@ -353,11 +353,11 @@ def _set_nested_classes_as_attributes(cls: type):
     Can be useful for class that had their endianness converted
     """
 
-    all_binary_fields = _get_binary_fields_recursively(cls)
+    full_binary_fields = _get_binary_fields_recursively(cls)
 
-    for attr_name, attr_type in all_binary_fields.items():
+    for attr_name, attr_type in full_binary_fields.items():
         new_attr_name = f'{attr_name}_type'
-        if new_attr_name in all_binary_fields:
+        if new_attr_name in full_binary_fields:
             raise AttributeError(f'Cannot set binary struct attribute to {new_attr_name}')
 
         setattr(cls, f'{attr_name}_type', attr_type)
@@ -386,6 +386,16 @@ def _parse_annotations(annotations: dict) -> OrderedDict:
     return ordered_dict
 
 
+def _calc_static_size(cls: type) -> int:
+    """
+    Returns the static size of the class.
+    DynamicBuffers sizes will be 0
+    """
+
+    return sum(field_type.static_size for field_type in
+               _get_binary_fields_recursively(cls).values())
+
+
 def _process_class(cls):
     """
     This function is the main logic unit, it parses the different parameters and
@@ -408,11 +418,21 @@ def _process_class(cls):
         cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
         cls_bases += (BinaryField,)
 
+        # Let python regenerate __dict__ and __weakref__
         new_dict = dict(cls.__dict__)
         new_dict.pop('__dict__', None)
         new_dict.pop('__weakref__', None)
 
         cls = type(cls.__name__, cls_bases, new_dict)
+
+    # Mark the class as a binary_struct, add the binary_fields
+    setattr(cls, f'_{cls.__name__}__is_binary_struct', True)
+    setattr(cls, 'binary_fields', binary_fields)
+
+    # Insert all of the class bases that are going to be used
+    # in the generated functions into the globals dict
+    for parent in cls.__bases__:
+        globals[parent.__name__] = parent
 
     # These will be used for creating the new class
     # They are the same as annotations, but they contain the default value too
@@ -421,12 +441,7 @@ def _process_class(cls):
         value = getattr(cls, name) if hasattr(cls, name) else None
         binary_attrs[name] = (kind, value)
 
-    # Insert all of the class bases that are going to be used
-    # in the generated functions into the globals dict
-    for parent in cls.__bases__:
-        globals[parent.__name__] = parent
-
-    # Add generated functions
+    # Generate functions
     generated_fns = {
         '__eq__':       _create_equal_fn(binary_fields, globals, cls.__bases__),
         '__str__':      _create_string_fn(binary_fields, globals, cls.__bases__),
@@ -434,9 +449,10 @@ def _process_class(cls):
         '__bytes__':    _create_bytes_fn(binary_fields, globals, cls.__bases__),
         '_bs_size':     _create_size_fn(binary_fields, globals, cls.__bases__),
         '__iter__':     _create_iter_fn(binary_fields, globals, cls.__bases__),
-        'deserialize':  classmethod(_create_deserialize_fn(binary_fields, globals, cls.__bases__)),
+        'deserialize':  classmethod(_create_deserialize_fn(binary_fields, globals, cls.__bases__))
     }
 
+    # Add the generated functions
     for name, fn in generated_fns.items():
         # Mark the generated functions
         setattr(fn, 'bs_generated_func', True)
@@ -447,20 +463,17 @@ def _process_class(cls):
         assert new_fn_name not in cls.__dict__, f'Illegal name "{new_fn_name}" used for function'
         setattr(cls, new_fn_name, fn)
 
-    # Add other attributes
+    # Add other attributes, these are non-overriding
     other_attrs = {
         '__setattr__':          _set_binary_attr,
         '_init_binary_field':   _init_binary_field,
         'size_in_bytes':        property(generated_fns['_bs_size']),
-        f'_{cls.__name__}__is_binary_struct':   True
+        'static_size':          _calc_static_size(cls)
     }
 
     for name, attr in other_attrs.items():
         if name not in cls.__dict__:
             setattr(cls, name, attr)
-
-    # Update the binary fields
-    setattr(cls, 'binary_fields', binary_fields)
 
     _set_nested_classes_as_attributes(cls)
 

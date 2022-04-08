@@ -48,7 +48,7 @@ def _convert_buffer(buffer: type, endianness: Endianness) -> type:
 
     else:
         # BinaryBuffer
-        return new_binary_buffer(buffer.UNDERLYING_TYPE, buffer.SIZE)
+        return new_binary_buffer(buffer.UNDERLYING_TYPE, buffer.static_size)
 
 
 def _convert_class_annotations_endianness(cls, endianness: Endianness):

@@ -194,3 +194,19 @@ def test_valid_dict_conversion_inheritence(InheritedClassFixture):
     inherited = InheritedClassFixture(5, range(7), 9)
 
     assert dict(inherited) == {'size': le_uint32_t(5), 'buf': list(range(7)) + [0] * 25, 'magic': le_uint32_t(9)}
+
+
+def test_valid_class_static_size(SimpleClassFixture):
+    assert SimpleClassFixture.static_size == 1
+
+
+def test_valid_class_static_size_dynamic(DynamicClassFixture):
+    assert DynamicClassFixture.static_size == 1
+
+
+def test_valid_class_static_size_inherited(InheritedClassFixture):
+    assert InheritedClassFixture.static_size == 40
+
+
+def test_valid_class_static_size_nested(NestedClassFixture):
+    assert NestedClassFixture.static_size == 40

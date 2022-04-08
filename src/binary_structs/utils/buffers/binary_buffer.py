@@ -29,7 +29,7 @@ def new_binary_buffer(underlying_type: type, size: int):
         and the passed parameter.
         """
 
-        SIZE = size
+        static_size = size
 
         def __init__(self, buf: list = []):
             """
@@ -49,7 +49,7 @@ def new_binary_buffer(underlying_type: type, size: int):
         @classmethod
         def deserialize(cls, buf: bytes):
             new_buf = cls()
-            underlying_size = underlying_type().size_in_bytes
+            underlying_size = underlying_type.static_size
 
             for index in range(size):
                 new_element = underlying_type.deserialize(buf[:underlying_size])
