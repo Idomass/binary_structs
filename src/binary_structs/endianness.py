@@ -129,6 +129,7 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     else:
         return type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
 
+
 def endian_decorator(cls, endianness: Endianness):
     if not _is_binary_struct(cls):
         raise TypeError('Given class is not a BinaryField!')

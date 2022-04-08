@@ -25,16 +25,6 @@ from collections import OrderedDict
 LINE = '-' * 100
 
 
-class AnnotationType(Enum):
-    """
-    Types of available annotations
-    """
-
-    OTHER = 0
-    TYPED_BUFFER = 1
-    BINARY_BUFFER = 2
-
-
 def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):
     """
     This function receives a name for the function, and returns a
@@ -54,53 +44,6 @@ def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], 
     return ns[name]
 
 
-def _insert_bases_to_globals(cls: type, globals: dict):
-    """
-    Insert all of the class bases that are going to be used
-    in the generated functions into the globals dict
-    """
-
-    for parent in cls.__bases__:
-        globals[parent.__name__] = parent
-
-
-def _get_annotations_recursively(cls: type) -> OrderedDict:
-    """
-    Returns a dictionary of annotations recuresively for each binary struct
-    Used for inheritance tree when multiple layers of annotations are available
-    """
-
-    annotations = OrderedDict()
-    for base in cls.__bases__:
-        if _is_binary_struct(base):
-            annotations.update(_get_annotations_recursively(base))
-
-    if _is_binary_struct(cls):
-        annotations.update(cls.__dict__.get('__annotations__', {}).copy())
-
-    return annotations
-
-
-def _get_annotation_type(annotation) -> AnnotationType:
-    """
-    Returns the type of a given annotation.
-    Annotation can be a BinaryBuffer, TypedBuffer or something else
-    """
-
-    if isinstance(annotation, list):
-        if len(annotation) == 2:
-            return AnnotationType.BINARY_BUFFER
-
-        elif len(annotation) == 1:
-            return AnnotationType.TYPED_BUFFER
-
-        else:
-            raise ValueError('Buffer has wrong number of parameters!')
-
-    else:
-        return AnnotationType.OTHER
-
-
 def _init_binary_field(self: type, field_name: str, field_type: BinaryField, field_value):
     """
     Helper function for initializing BinaryFields in a BinaryStruct
@@ -117,7 +60,7 @@ def _init_binary_field(self: type, field_name: str, field_type: BinaryField, fie
 
     # Check if type is compatible
     elif _is_binary_struct(type(field_value)) and _is_binary_struct(field_type) and \
-        type(field_value).__annotations__ == field_type.__annotations__:
+        type(field_value).binary_fields == field_type.binary_fields:
         object.__setattr__(self, field_name, field_value)
 
     # Check for nested args initialization
@@ -388,20 +331,36 @@ def _is_parent_fn_callable(parent: type, fn_name: str):
     return parent.__name__ != 'BinaryField' and inspect.isfunction(getattr(parent, fn_name, None))
 
 
-def _set_nested_classes_as_attributes(cls):
+def _get_binary_fields_recursively(cls: type) -> OrderedDict:
+    """
+    Returns an OrderedDict of all the binary fields in the class hierarchy
+    """
+
+    binary_fields = OrderedDict()
+    for parent in cls.__bases__:
+        if _is_binary_struct(parent):
+            binary_fields.update(_get_binary_fields_recursively(parent))
+
+    if _is_binary_struct(cls):
+        binary_fields.update(cls.binary_fields)
+
+    return binary_fields
+
+
+def _set_nested_classes_as_attributes(cls: type):
     """
     Set nested classes as attributes, to allow easy access to underlying type.
     Can be useful for class that had their endianness converted
     """
 
-    annotations = _get_annotations_recursively(cls)
-    for attr_name, attr_type in annotations.items():
-        new_attr_name = f'{attr_name}_type'
+    all_binary_fields = _get_binary_fields_recursively(cls)
 
-        if new_attr_name in annotations:
+    for attr_name, attr_type in all_binary_fields.items():
+        new_attr_name = f'{attr_name}_type'
+        if new_attr_name in all_binary_fields:
             raise AttributeError(f'Cannot set binary struct attribute to {new_attr_name}')
 
-        setattr(cls, new_attr_name, attr_type)
+        setattr(cls, f'{attr_name}_type', attr_type)
 
 
 def _parse_annotations(annotations: dict) -> OrderedDict:
@@ -412,13 +371,12 @@ def _parse_annotations(annotations: dict) -> OrderedDict:
 
     ordered_dict = OrderedDict()
     for name, annotation in annotations.items():
-        annotation_type = _get_annotation_type(annotation)
+        if isinstance(annotation, list):
+            if len(annotation) == 1:
+                field = new_typed_buffer(annotation[0])
 
-        if annotation_type == AnnotationType.TYPED_BUFFER:
-            field = new_typed_buffer(annotation[0])
-
-        elif annotation_type == AnnotationType.BINARY_BUFFER:
-            field = new_binary_buffer(*annotation)
+            elif len(annotation) == 2:
+                field = new_binary_buffer(*annotation)
 
         else:
             field = annotation
@@ -463,7 +421,10 @@ def _process_class(cls):
         value = getattr(cls, name) if hasattr(cls, name) else None
         binary_attrs[name] = (kind, value)
 
-    _insert_bases_to_globals(cls, globals)
+    # Insert all of the class bases that are going to be used
+    # in the generated functions into the globals dict
+    for parent in cls.__bases__:
+        globals[parent.__name__] = parent
 
     # Add generated functions
     generated_fns = {
@@ -483,7 +444,7 @@ def _process_class(cls):
 
     # Add other attributes
     other_attrs = {
-        '__setattr__': _set_binary_attr,
+        '__setattr__':          _set_binary_attr,
         '_init_binary_field':   _init_binary_field,
         'size_in_bytes':        property(generated_fns['_bs_size']),
         f'_{cls.__name__}__is_binary_struct':   True
@@ -492,6 +453,9 @@ def _process_class(cls):
     for name, attr in other_attrs.items():
         if name not in cls.__dict__:
             setattr(cls, name, attr)
+
+    # Update the binary fields
+    setattr(cls, 'binary_fields', binary_fields)
 
     _set_nested_classes_as_attributes(cls)
 

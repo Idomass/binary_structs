@@ -97,9 +97,9 @@ def test_valid_class_old_still_valid_inheritance():
     C = big_endian(B)
 
     assert B.__base__ is A
-    assert A.a_type == uint32_t
-    assert A.b_type == [uint8_t]
-    assert A.c_type == [uint8_t, 32]
+    assert A.a_type is uint32_t
+    assert A.b_type is new_typed_buffer(uint8_t)
+    assert A.c_type is new_binary_buffer(uint8_t, 32)
 
 def test_valid_class_longer_inheritance_tree(BufferClassFixture):
     class A(BufferClassFixture):
