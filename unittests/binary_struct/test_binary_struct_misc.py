@@ -5,7 +5,7 @@ from binary_structs import MaxSizeExceededError
 from conftest import EmptyClass, empty_decorator, test_structs
 
 from binary_structs import binary_struct, big_endian, little_endian,    \
-                           uint8_t, le_uint8_t, le_uint32_t
+                           le_uint8_t, le_uint8_t, le_uint32_t
 
 
 @pytest.mark.skip(reason='#TODO Cant figure a way to pass it for now')
@@ -68,7 +68,7 @@ def test_inequal(decorator, cls, params):
 def test_invalid_equal_not_binary_struct(SimpleClassFixture):
     class A:
         def __init__(self):
-            self.a = uint8_t(5)
+            self.a = le_uint8_t(5)
 
     a = A()
     b = SimpleClassFixture(5)
@@ -212,9 +212,45 @@ def test_valid_class_static_size_nested(NestedClassFixture):
     assert NestedClassFixture.static_size == 40
 
 
+# Bugs
 def test_valid_class_type_name_same_as_annotation(BufferClassFixture):
     @binary_struct
     class A:
         BufferClass: BufferClassFixture
 
     A()
+
+
+def test_valid_class_2_buffers_dynamics_types_not_corrupted():
+    @binary_struct
+    class A:
+        buf1: [le_uint8_t]
+        buf2: [le_uint32_t]
+
+    assert A.buf1_type.UNDERLYING_TYPE is le_uint8_t
+    assert A.buf2_type.UNDERLYING_TYPE is le_uint32_t
+
+
+def test_valid_class_2_buffers_dynamics_are_different():
+    @binary_struct
+    class A:
+        buf1: [le_uint8_t]
+        buf2: [le_uint32_t]
+
+    a = A()
+
+    assert a.buf1 is not a.buf2
+
+
+def test_valid_class_2_binary_buffers_sizes_and_types_not_corrupted():
+    @binary_struct
+    class A:
+        buf1: [le_uint8_t, 32]
+        buf2: [le_uint32_t, 16]
+
+    a = A()
+
+    assert A.buf1_type.UNDERLYING_TYPE is le_uint8_t
+    assert A.buf2_type.UNDERLYING_TYPE is le_uint32_t
+    assert len(a.buf1) == 32
+    assert len(a.buf2) == 16

@@ -129,6 +129,9 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     elif cls is not BufferField and issubclass(cls, BufferField):
         return _convert_buffer(cls, endianness)
 
+    elif cls is BinaryField:
+        return BinaryField
+
     else:
         return type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
 

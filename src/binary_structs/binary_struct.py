@@ -18,14 +18,13 @@ import inspect
 from binary_structs.utils import BinaryField, BufferField, \
                                  new_binary_buffer, new_typed_buffer
 
-from enum import Enum
 from collections import OrderedDict
 
 
 LINE = '-' * 100
 
 
-def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], globals: dict = {}):
+def _create_fn(name, local_params: list[str], lines: list[str], globals: dict):
     """
     This function receives a name for the function, and returns a
     function with the given locals and globals
@@ -41,6 +40,18 @@ def _create_fn(name, local_params: list[str] = [], lines: list[str] = ['pass'], 
     fn = ns[name]
 
     return ns[name]
+
+
+def _get_global_name(obj: object) -> str:
+    """
+    Returns a name of the obj in the global dict.
+    This formatting is necessary to avoid collisions.
+    """
+
+    # obj might be an instance, get type name if it is
+    obj_name = getattr(obj, '__name__', getattr(type(obj), '__name__'))
+
+    return f'__{hex(id(obj))}_{obj_name}'
 
 
 def _init_binary_field(self: type, field_name: str, field_type: BinaryField, field_value):
@@ -116,18 +127,20 @@ def _init_var(name: str, field_type: type, globals: dict, default_value: type) -
     if not issubclass(field_type, BinaryField):
         raise TypeError('All fields must implement BinaryField!')
 
-    # Generate function text for the given type
-    globals[f'{name}_default_value'] = default_value
-    new_type_name = f'__{field_type.__name__}_type'
+    # Add types to the global dict
+    default_value_name = _get_global_name(default_value)
+    globals[default_value_name] = default_value
+    new_type_name = _get_global_name(field_type)
     globals[new_type_name] = field_type
 
+    # Generate function text for the given type
     if issubclass(field_type, BufferField):
-        init_var =  [f'{name} = {new_type_name}({name} or {name}_default_value or [])']
+        init_var =  [f'{name} = {new_type_name}({name} or {default_value_name} or [])']
         init_var += [f'object.__setattr__(self, "{name}", {name})']
 
     else:
         init_var = [f'self._init_binary_field("{name}", {new_type_name}, '
-                                             f'{name} or {name}_default_value)']
+                                             f'{name} or {default_value_name})']
 
     return init_var
 
@@ -159,7 +172,7 @@ def _create_init_fn(binary_attrs: dict, globals: dict, bases: tuple[type]) -> st
                 init_kwargs.append(f'{param.name} = {param.default}')
 
         parent_variables = parent.__init__.__code__.co_varnames[1:]
-        init_txt.append(f'{parent.__name__}.__init__(self, '
+        init_txt.append(f'{_get_global_name(parent)}.__init__(self, '
                         f'{", ".join(param for param in parent_variables)})')
 
     # Init variables
@@ -183,7 +196,7 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
         if not _is_parent_fn_callable(parent, '__bytes__'):
             continue
 
-        lines += [f'buf += {parent.__name__}.__bytes__(self)']
+        lines += [f'buf += {_get_global_name(parent)}.__bytes__(self)']
 
     # For class attributes
     for attr in attributes.keys():
@@ -210,7 +223,7 @@ def _create_equal_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> 
         if not _is_parent_fn_callable(parent, '__eq__'):
             continue
 
-        lines.append(f'if not {parent.__name__}.__eq__(self, other):')
+        lines.append(f'if not {_get_global_name(parent)}.__eq__(self, other):')
         lines.append(f'    return False')
 
     for name in binary_fields:
@@ -233,7 +246,7 @@ def _create_string_fn(binary_fields: dict, globals: dict, bases: tuple[type]) ->
         if not _is_parent_fn_callable(parent, '__str__'):
             continue
 
-        lines += [f'string += {parent.__name__}.__str__(self)']
+        lines += [f'string += {_get_global_name(parent)}.__str__(self)']
 
     # Add class variables
     for attr in binary_fields:
@@ -257,7 +270,7 @@ def _create_iter_fn(binary_fields: dict, globals: dict, bases: tuple[type]):
         if not _is_parent_fn_callable(parent, '__iter__'):
             continue
 
-        lines.append(f'for attr, value in {parent.__name__}.__iter__(self):')
+        lines.append(f'for attr, value in {_get_global_name(parent)}.__iter__(self):')
         lines.append('    yield attr, value')
 
     for name in binary_fields:
@@ -279,8 +292,8 @@ def _create_deserialize_fn(binary_fields: dict, globals: dict, bases: tuple[type
         if not _is_parent_fn_callable(parent, 'deserialize'):
             continue
 
-        lines.append(f'init_dict.update(dict({parent.__name__}.deserialize(buf)))')
-        lines.append(f'buf = buf[{parent.__name__}.static_size:]')
+        lines.append(f'init_dict.update(dict({_get_global_name(parent)}.deserialize(buf)))')
+        lines.append(f'buf = buf[{_get_global_name(parent)}.static_size:]')
 
     # For this class attributes
     for name in binary_fields:
@@ -306,7 +319,7 @@ def _create_size_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> s
         if not _is_parent_fn_callable(parent, '_bs_size'):
             continue
 
-        lines += [f'counter += {parent.__name__}._bs_size(self)']
+        lines += [f'counter += {_get_global_name(parent)}._bs_size(self)']
 
     # Add class variables
     for attr in binary_fields:
@@ -329,7 +342,7 @@ def _is_parent_fn_callable(parent: type, fn_name: str):
     fn = getattr(parent, fn_name, None)
     is_fn = inspect.isfunction(fn) or inspect.ismethod(fn)
 
-    return parent.__name__ != 'BinaryField' and is_fn
+    return parent is not BinaryField and is_fn
 
 
 def _get_binary_fields_recursively(cls: type) -> OrderedDict:
@@ -425,6 +438,11 @@ def _process_class(cls):
         new_dict.pop('__weakref__', None)
 
         cls = type(cls.__name__, cls_bases, new_dict)
+
+    # Add bases to global namepsace, they will be referenced
+    # in the generated functions
+    for parent in cls.__bases__:
+        globals[_get_global_name(parent)] = parent
 
     # Mark the class as a binary_struct, add the binary_fields
     setattr(cls, f'_{cls.__name__}__is_binary_struct', True)
