@@ -210,3 +210,11 @@ def test_valid_class_static_size_inherited(InheritedClassFixture):
 
 def test_valid_class_static_size_nested(NestedClassFixture):
     assert NestedClassFixture.static_size == 40
+
+
+def test_valid_class_type_name_same_as_annotation(BufferClassFixture):
+    @binary_struct
+    class A:
+        BufferClass: BufferClassFixture
+
+    A()

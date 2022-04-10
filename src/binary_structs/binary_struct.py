@@ -118,14 +118,15 @@ def _init_var(name: str, field_type: type, globals: dict, default_value: type) -
 
     # Generate function text for the given type
     globals[f'{name}_default_value'] = default_value
-    globals[field_type.__name__] = field_type
+    new_type_name = f'__{field_type.__name__}_type'
+    globals[new_type_name] = field_type
 
     if issubclass(field_type, BufferField):
-        init_var =  [f'{name} = {field_type.__name__}({name} or {name}_default_value or [])']
+        init_var =  [f'{name} = {new_type_name}({name} or {name}_default_value or [])']
         init_var += [f'object.__setattr__(self, "{name}", {name})']
 
     else:
-        init_var = [f'self._init_binary_field("{name}", {field_type.__name__}, '
+        init_var = [f'self._init_binary_field("{name}", {new_type_name}, '
                                              f'{name} or {name}_default_value)']
 
     return init_var
