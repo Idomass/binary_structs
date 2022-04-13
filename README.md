@@ -132,12 +132,12 @@ class BufferWithSize:
     data: [uint8_t, 8]
 
     def __bytes__(self):
-        return b'Hello world' + self.BufferWithSize__bytes__()
+        return b'Hello world' + self._bs_bytes()
 ```
 This implementation will greet the user before giving him the serialized data, VERY useful.
 
-Note that we used `BufferWithSize__bytes` in order to call the generated function. If a function is redefined in
-the class decleration, the generated function will have the class name added as a prefix to its name.
+Note that we used the class's `_bs_bytes` in order to call the generated function. If a function is generated in
+the class decleration.
 
 ## Implementation
 ### Abstract

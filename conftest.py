@@ -98,7 +98,7 @@ default_structs = [
     DefaultNestedClass([5, range(3)]),
     DefaultNestedArgsClass([5, range(7)]),
     DefaultNestedKWargsClass(nested={'size': 5}),
-    DefaultInheritedClass([5, range(3)]),
+    DefaultInheritedClass([5, range(3)])
 ]
 
 # List for parameterize tests

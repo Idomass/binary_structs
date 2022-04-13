@@ -86,7 +86,7 @@ def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: En
     The class is being rebuilt in order to not destroy the old one.
     """
 
-    logging.debug(f'Converting endianness for {cls}')
+    logging.debug(f'Converting endianness for {cls} at {hex(id(cls))}')
 
     # A field is consider valid if it is not a generated function
     is_field_valid = lambda field: not hasattr(field, 'bs_generated_func')

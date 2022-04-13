@@ -37,7 +37,8 @@ def _create_fn(name, local_params: list[str], lines: list[str], globals: dict):
     ns = {}
     exec(fn_text, globals, ns)
 
-    fn = ns[name]
+    # Mark the generated functions
+    setattr(ns[name], 'bs_generated_func', True)
 
     return ns[name]
 
@@ -158,10 +159,12 @@ def _create_init_fn(binary_attrs: dict, globals: dict, bases: tuple[type]) -> st
 
     # Init parent classes if they are binary fields
     for parent in bases:
-        if not _is_parent_fn_callable(parent, '__init__'):
+        if not _is_parent_fn_callable(parent, '_bs_init'):
             continue
 
-        for param in inspect.signature(parent.__init__).parameters.values():
+        parent_init = getattr(parent, '_bs_init')
+
+        for param in inspect.signature(parent_init).parameters.values():
             if param.name == 'self':
                 continue
 
@@ -171,8 +174,8 @@ def _create_init_fn(binary_attrs: dict, globals: dict, bases: tuple[type]) -> st
             else:
                 init_kwargs.append(f'{param.name} = {param.default}')
 
-        parent_variables = parent.__init__.__code__.co_varnames[1:]
-        init_txt.append(f'{_get_global_name(parent)}.__init__(self, '
+        parent_variables = parent_init.__code__.co_varnames[1:]
+        init_txt.append(f'{_get_global_name(parent)}.{parent_init.__name__}(self, '
                         f'{", ".join(param for param in parent_variables)})')
 
     # Init variables
@@ -181,7 +184,7 @@ def _create_init_fn(binary_attrs: dict, globals: dict, bases: tuple[type]) -> st
         init_txt.extend(init_var_code)
         init_kwargs.append(f'{name} = None')
 
-    return _create_fn('__init__', init_args + init_kwargs, init_txt or ['pass'], globals)
+    return _create_fn('_bs_init', init_args + init_kwargs, init_txt or ['pass'], globals)
 
 
 def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
@@ -204,7 +207,7 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
 
     lines += ['return buf']
 
-    return _create_fn('__bytes__', ['self'], lines, globals)
+    return _create_fn('_bs_bytes', ['self'], lines, globals)
 
 
 def _create_equal_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
@@ -231,7 +234,7 @@ def _create_equal_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> 
         lines.append(f'    return False')
     lines.append('return True')
 
-    return _create_fn('__eq__', ['self, other'], lines, globals)
+    return _create_fn('_bs_eq', ['self, other'], lines, globals)
 
 
 def _create_string_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
@@ -256,7 +259,7 @@ def _create_string_fn(binary_fields: dict, globals: dict, bases: tuple[type]) ->
 
     lines += ['return string']
 
-    return _create_fn('__str__', ['self'], lines, globals)
+    return _create_fn('_bs_str', ['self'], lines, globals)
 
 
 def _create_iter_fn(binary_fields: dict, globals: dict, bases: tuple[type]):
@@ -276,10 +279,10 @@ def _create_iter_fn(binary_fields: dict, globals: dict, bases: tuple[type]):
     for name in binary_fields:
         lines.append(f'yield "{name}", self.{name}')
 
-    return _create_fn('__iter__', ['self'], lines or ['pass'], globals)
+    return _create_fn('_bs_iter', ['self'], lines or ['pass'], globals)
 
 
-def _create_deserialize_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
+def _create_deserialize_fn(binary_fields: dict, globals: dict, cls: type) -> str:
     """
     Create a deserialize function for binary struct from a buffer
     The function will first deserialize parent classes, then the class attributes
@@ -288,7 +291,7 @@ def _create_deserialize_fn(binary_fields: dict, globals: dict, bases: tuple[type
     lines = ['init_dict = {}']
 
     # For this class bases
-    for parent in bases:
+    for parent in cls.__bases__:
         if not _is_parent_fn_callable(parent, 'deserialize'):
             continue
 
@@ -297,13 +300,15 @@ def _create_deserialize_fn(binary_fields: dict, globals: dict, bases: tuple[type
 
     # For this class attributes
     for name in binary_fields:
-        lines.append(f'init_dict["{name}"] = cls.{name}_type.deserialize(buf)')
+        lines.append(f'init_dict["{name}"] = {_get_global_name(cls)}.{name}_type.deserialize(buf)')
 
-        lines.append(f'buf = buf[cls.{name}_type.static_size:]')
+        lines.append(f'buf = buf[{_get_global_name(cls)}.{name}_type.static_size:]')
 
-    lines.append('return cls(**init_dict)')
+    lines.append(f'new_instance = {_get_global_name(cls)}.__new__({_get_global_name(cls)})')
+    lines.append(f'{_get_global_name(cls)}._bs_init(new_instance, **init_dict)')
+    lines.append(f'return new_instance')
 
-    return _create_fn('deserialize', ['cls, buf'], lines or ['pass'], globals)
+    return _create_fn('deserialize', ['buf'], lines or ['pass'], globals)
 
 
 def _create_size_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
@@ -417,7 +422,7 @@ def _process_class(cls):
     """
 
     logging.debug(LINE)
-    logging.debug(f'Processing {cls}')
+    logging.debug(f'Processing {cls} at {hex(id(cls))}')
 
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['new_binary_buffer'] = new_binary_buffer
@@ -439,6 +444,9 @@ def _process_class(cls):
 
         cls = type(cls.__name__, cls_bases, new_dict)
 
+    # Add the class to the globals
+    globals[_get_global_name(cls)] = cls
+
     # Add bases to global namepsace, they will be referenced
     # in the generated functions
     for parent in cls.__bases__:
@@ -448,11 +456,6 @@ def _process_class(cls):
     setattr(cls, f'_{cls.__name__}__is_binary_struct', True)
     setattr(cls, 'binary_fields', binary_fields)
 
-    # Insert all of the class bases that are going to be used
-    # in the generated functions into the globals dict
-    for parent in cls.__bases__:
-        globals[parent.__name__] = parent
-
     # These will be used for creating the new class
     # They are the same as annotations, but they contain the default value too
     binary_attrs = OrderedDict()
@@ -461,32 +464,32 @@ def _process_class(cls):
         binary_attrs[name] = (kind, value)
 
     # Generate functions
-    generated_fns = {
-        '__eq__':       _create_equal_fn(binary_fields, globals, cls.__bases__),
-        '__str__':      _create_string_fn(binary_fields, globals, cls.__bases__),
-        '__init__':     _create_init_fn(binary_attrs, globals, cls.__bases__),
-        '__bytes__':    _create_bytes_fn(binary_fields, globals, cls.__bases__),
-        '_bs_size':     _create_size_fn(binary_fields, globals, cls.__bases__),
-        '__iter__':     _create_iter_fn(binary_fields, globals, cls.__bases__),
-        'deserialize':  classmethod(_create_deserialize_fn(binary_fields, globals, cls.__bases__))
+    generated_dunders = {
+        'eq':       _create_equal_fn(binary_fields, globals, cls.__bases__),
+        'str':      _create_string_fn(binary_fields, globals, cls.__bases__),
+        'bytes':    _create_bytes_fn(binary_fields, globals, cls.__bases__),
+        'iter':     _create_iter_fn(binary_fields, globals, cls.__bases__),
+        'init':     _create_init_fn(binary_attrs, globals, cls.__bases__)
     }
 
     # Add the generated functions
-    for name, fn in generated_fns.items():
-        # Mark the generated functions
-        setattr(fn, 'bs_generated_func', True)
+    for name, fn in generated_dunders.items():
+        # If function's dunder is not implemented in the class, add it as default
+        dunder_name = f'__{name}__'
+        if dunder_name not in cls.__dict__:
+            setattr(cls, dunder_name, fn)
 
-        # Add them to the class, if a custom-implemented one exists,
-        # add them with the class name as prefix
-        new_fn_name = f'{cls.__name__}{name}' if name in cls.__dict__ else name
-        assert new_fn_name not in cls.__dict__, f'Illegal name "{new_fn_name}" used for function'
-        setattr(cls, new_fn_name, fn)
+        # Add the generated function to the class
+        setattr(cls, f'_bs_{name}', fn)
 
     # Add other attributes, these are non-overriding
+    size_fn = _create_size_fn(binary_fields, globals, cls.__bases__)
     other_attrs = {
+        'deserialize':          _create_deserialize_fn(binary_fields, globals, cls),
         '__setattr__':          _set_binary_attr,
         '_init_binary_field':   _init_binary_field,
-        'size_in_bytes':        property(generated_fns['_bs_size']),
+        '_bs_size':             size_fn,
+        'size_in_bytes':        property(size_fn),
         'static_size':          _calc_static_size(cls)
     }
 
