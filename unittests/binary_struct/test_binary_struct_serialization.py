@@ -41,7 +41,7 @@ def test_serialization(decorator, endianness, cls, cls_params, struct_format, st
 def test_serialization_empty(decorator, endianness, cls, cls_params, struct_format, struct_params):
     binary_struct = decorator(cls)()
 
-    assert bytes(binary_struct) == b'\x00' * binary_struct.size_in_bytes
+    assert bytes(binary_struct) == b'\x00' * binary_struct.static_size
 
 @pytest.mark.parametrize('decorator, endianness, cls, cls_params, struct_format, struct_params', test_params)
 def test_deserialization(decorator, endianness, cls, cls_params, struct_format, struct_params):
@@ -55,7 +55,7 @@ def test_deserialization(decorator, endianness, cls, cls_params, struct_format, 
 def test_deserialization_empty(decorator, endianness, cls, cls_params, struct_format, struct_params):
     new_cls = decorator(cls)
     binary_struct = new_cls()
-    deserialized = new_cls.deserialize(b'\x00' * binary_struct.size_in_bytes)
+    deserialized = new_cls.deserialize(b'\x00' * binary_struct.static_size)
 
     assert deserialized == binary_struct
 
@@ -65,9 +65,8 @@ def test_deserialization_too_small(decorator, endianness, cls, cls_params, struc
     if cls is not EmptyClass:
         new_cls = decorator(cls)()
 
-        # TODO size_in_bytes static
         with pytest.raises(ValueError):
-            decorator(cls).deserialize(b'\x00' * (new_cls.size_in_bytes - 1))
+            decorator(cls).deserialize(b'\x00' * (new_cls.static_size - 1))
 
 @pytest.mark.parametrize('decorator, endianness, cls, cls_params, struct_format, struct_params', test_params)
 def test_serialization_and_deserialization(decorator, endianness, cls, cls_params, struct_format, struct_params):

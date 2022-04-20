@@ -65,7 +65,7 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
         if issubclass(kind, PrimitiveTypeField):
             new_kind = _convert_primitive_type_endianness(kind, endianness)
 
-        elif issubclass(kind, BinaryField):
+        elif hasattr(kind, '_is_binary_field'):
             new_kind = _convert_parents_classes(kind, endianness)
 
         else:
@@ -80,7 +80,7 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
             annotations[annotation_name] = new_kind
 
 
-def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: Endianness):
+def _convert_endianness(cls: type, new_bases: tuple[type], endianness: Endianness):
     """
     Convert the endianness of a single class to the given endianness.
     The class is being rebuilt in order to not destroy the old one.
@@ -116,11 +116,10 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
 
     new_bases = []
     for base in cls.__bases__:
-        if issubclass(base, BinaryField):
+        if hasattr(base, '_is_binary_field'):
             new_bases.append(_convert_parents_classes(base, endianness))
 
         else:
-            # Ignore non-BinaryFields
             new_bases.append(base)
 
     if _is_binary_struct(cls):
@@ -129,16 +128,14 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     elif cls is not BufferField and issubclass(cls, BufferField):
         return _convert_buffer(cls, endianness)
 
-    elif cls is BinaryField:
-        return BinaryField
-
     else:
+        # Rebuild the class, because it's parents might have been changed
         return type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
 
 
 def endian_decorator(cls, endianness: Endianness):
     if not _is_binary_struct(cls):
-        raise TypeError('Given class is not a BinaryField!')
+        raise TypeError('Given class cannot be used in a binary struct!')
 
     def wrap(cls):
         return _convert_parents_classes(cls, endianness)
@@ -149,17 +146,17 @@ def endian_decorator(cls, endianness: Endianness):
     return wrap(cls)
 
 
-def little_endian(cls: BinaryField = None):
+def little_endian(cls: type = None):
     """
-    Convert a BinaryField class to little_endian
+    Convert a binary struct class to little_endian
     """
 
     return endian_decorator(cls, Endianness.LITTLE)
 
 
-def big_endian(cls: BinaryField = None):
+def big_endian(cls: type = None):
     """
-    Convert a BinaryField class to big_endian
+    Convert a binary struct class to big_endian
     """
 
     return endian_decorator(cls, Endianness.BIG)

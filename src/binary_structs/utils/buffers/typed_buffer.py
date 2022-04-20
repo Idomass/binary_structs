@@ -5,23 +5,23 @@ It is used to enforce the type that is being added to the buffer
 """
 
 from functools import lru_cache
-from binary_structs.utils.binary_field import BinaryField
 
 
-class BufferField(BinaryField):
+class BufferField:
     """
-    Empty class, used to differntiate between BinaryFields and BufferFields
+    Empty class, used to identify buffers for internal usages
     """
 
 
 @lru_cache
-def new_typed_buffer(underlying_type: BinaryField):
+def new_typed_buffer(underlying_type: type):
     """
     Creates a new TypedBuffer class with the given underlying type
     """
 
-    if not issubclass(underlying_type, BinaryField):
-        raise TypeError('Field must implement BinaryField interface!')
+    # Verify the field type
+    if not hasattr(underlying_type, '_is_binary_field'):
+        raise TypeError('Given field cannot be used inside a binary struct!')
 
     class TypedBuffer(list, BufferField):
         """
@@ -30,6 +30,7 @@ def new_typed_buffer(underlying_type: BinaryField):
 
         static_size = 0
         UNDERLYING_TYPE = underlying_type
+        _is_binary_field = None
 
         def __init__(self, buf: list = []):
             for index, element in enumerate(buf):

@@ -1,15 +1,6 @@
 """
-Binary field is an interface used by binary structs.
-Each field in binary structs must implement:
-    - serialization
-    - deserialization
-    - size property
-
-Binary field is an interface for such these things.
-
-PrimitiveTypeField is a primitive-ctypes based field,
-and this file adds the classic primitive types that
-implement BinaryField interface
+This file organizes the Primitive types that are used by the library.
+These types wrap the ctypes module
 """
 
 import sys
@@ -27,59 +18,9 @@ class Endianness(Enum):
     HOST = LITTLE if sys.byteorder == 'little' else BIG
 
 
-class BinaryField:
+class PrimitiveTypeField:
     """
-    An interface for memebers of a binary_struct.
-
-    NOTE: You shouldn't use this interface in your classes,
-    instead, use the binary_struct decorator
-    """
-
-    @abstractmethod
-    def __bytes__(self) -> bytes:
-        pass
-
-    @abstractmethod
-    def __eq__(self, other) -> bool:
-        pass
-
-    @abstractmethod
-    def __str__(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def size_in_bytes(self):
-        pass
-
-    @staticmethod
-    def __bitwise_operation(op1, op2, operation) -> bytes:
-        op1_bytes = bytes(op1)
-        op2_bytes = bytes(op2)
-
-        bigger_buf_len = max(len(op1_bytes), len(op2_bytes))
-
-        op1_bytes += b'\x00' * (bigger_buf_len - len(op1_bytes))
-        op2_bytes += b'\x00' * (bigger_buf_len - len(op2_bytes))
-
-        return bytes(getattr(int, operation)(a, b) for (a, b) in zip(op1_bytes, op2_bytes))
-
-    def __and__(self, other) -> bytes:
-        return BinaryField.__bitwise_operation(self, other, '__and__')
-
-    def __or__(self, other) -> bytes:
-        return BinaryField.__bitwise_operation(self, other, '__or__')
-
-    def __xor__(self, other) -> bytes:
-        return BinaryField.__bitwise_operation(self, other, '__xor__')
-
-    def __invert__(self) -> bytes:
-        return bytes(~x & 0xff for x in bytes(self))
-
-
-class PrimitiveTypeField(BinaryField):
-    """
-    Designed for primitive ctypes types, implements BinaryField
+    Designed for primitive ctypes types, wraps them and adds functionalities
     """
 
     def __init__(self, value: int = 0):
@@ -125,6 +66,30 @@ class PrimitiveTypeField(BinaryField):
     def __bytes__(self) -> bytes:
         return struct.pack(self.FORMAT, self.value)
 
+    @staticmethod
+    def __bitwise_operation(op1, op2, operation) -> bytes:
+        op1_bytes = bytes(op1)
+        op2_bytes = bytes(op2)
+
+        bigger_buf_len = max(len(op1_bytes), len(op2_bytes))
+
+        op1_bytes += b'\x00' * (bigger_buf_len - len(op1_bytes))
+        op2_bytes += b'\x00' * (bigger_buf_len - len(op2_bytes))
+
+        return bytes(getattr(int, operation)(a, b) for (a, b) in zip(op1_bytes, op2_bytes))
+
+    def __and__(self, other) -> bytes:
+        return PrimitiveTypeField.__bitwise_operation(self, other, '__and__')
+
+    def __or__(self, other) -> bytes:
+        return PrimitiveTypeField.__bitwise_operation(self, other, '__or__')
+
+    def __xor__(self, other) -> bytes:
+        return PrimitiveTypeField.__bitwise_operation(self, other, '__xor__')
+
+    def __invert__(self) -> bytes:
+        return bytes(~x & 0xff for x in bytes(self))
+
 
 class tmpl_int8_t(PrimitiveTypeField, ctypes.c_int8):
     FORMAT = 'b'
@@ -160,12 +125,13 @@ class tmpl_uint64_t(PrimitiveTypeField, ctypes.c_uint64):
 
 def endian_field(cls, format: str):
     """
-    Makes sure that a BinaryField is of the given endianness
+    Adds relevant metadata to a new class
     """
 
     def wrap(cls):
         cls.FORMAT = f'{format}{cls.FORMAT}'
         cls.static_size = ctypes.sizeof(cls)
+        cls._is_binary_field = None
         return cls
 
     if cls is None:

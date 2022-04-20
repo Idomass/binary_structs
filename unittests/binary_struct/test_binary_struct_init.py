@@ -19,6 +19,13 @@ def test_valid_simple_class(SimpleClassFixture):
 
     assert a.a.value == 5
 
+def test_invalid_class_types():
+    with pytest.raises(TypeError):
+        @binary_struct
+        class A:
+            a: int
+            b: str
+
 def test_invalid_simple_class(SimpleClassFixture):
     with pytest.raises(TypeError):
         SimpleClassFixture(10, 7)

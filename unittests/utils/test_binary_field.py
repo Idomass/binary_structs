@@ -1,10 +1,11 @@
 import pytest
 import random
 
-from binary_structs import BinaryField, le_uint8_t, le_int8_t, le_int16_t, le_uint16_t, \
-                           le_int32_t, le_uint32_t, le_int64_t, le_uint64_t,            \
-                           be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,              \
-                           be_int32_t, be_uint32_t, be_int64_t, be_uint64_t
+from binary_structs import le_uint8_t, le_int8_t, le_int16_t, le_uint16_t,      \
+                           le_int32_t, le_uint32_t, le_int64_t, le_uint64_t,    \
+                           be_uint8_t, be_int8_t, be_int16_t, be_uint16_t,      \
+                           be_int32_t, be_uint32_t, be_int64_t, be_uint64_t,    \
+                           PrimitiveTypeField
 from conftest import binary_fields
 
 # tests are catograized to:
@@ -118,8 +119,8 @@ def test_bitwise_operator2(type1, type2, operand):
 
     bitwised_buf = bytes(getattr(int, operand)(a, b) for (a, b) in zip(buf1, buf2))
 
-    assert getattr(BinaryField, operand)(num1, num2) == getattr(BinaryField, operand)(num2, num1)
-    assert bitwised_buf == getattr(BinaryField, operand)(num1, num2)
+    assert getattr(PrimitiveTypeField, operand)(num1, num2) == getattr(PrimitiveTypeField, operand)(num2, num1)
+    assert bitwised_buf == getattr(PrimitiveTypeField, operand)(num1, num2)
 
 # Compatible init test
 @pytest.mark.parametrize('type1', binary_fields)

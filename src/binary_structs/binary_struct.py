@@ -15,8 +15,7 @@ import sys
 import logging
 import inspect
 
-from binary_structs.utils import BinaryField, BufferField, \
-                                 new_binary_buffer, new_typed_buffer
+from binary_structs.utils import BufferField, new_binary_buffer, new_typed_buffer
 
 from collections import OrderedDict
 
@@ -55,9 +54,9 @@ def _get_global_name(obj: object) -> str:
     return f'__{hex(id(obj))}_{obj_name}'
 
 
-def _init_binary_field(self: type, field_name: str, field_type: BinaryField, field_value):
+def _init_binary_field(self: type, field_name: str, field_type: type, field_value):
     """
-    Helper function for initializing BinaryFields in a BinaryStruct
+    Helper function for initializing binary Fields in a BinaryStruct
     Initialization process is described below
     """
 
@@ -123,10 +122,6 @@ def _init_var(name: str, field_type: type, globals: dict, default_value: type) -
     # Don't allow these type names
     if name in ('size_in_bytes', 'FORMAT'):
         raise AttributeError(f'Can\'t set attribute name to {name}')
-
-    # Make sure field implements BinaryField
-    if not issubclass(field_type, BinaryField):
-        raise TypeError('All fields must implement BinaryField!')
 
     # Add types to the global dict
     default_value_name = _get_global_name(default_value)
@@ -216,10 +211,9 @@ def _create_equal_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> 
     This function will compare all fields that were declared in the annotations.
     """
 
-    globals['BinaryField'] = BinaryField
     lines = [
-        'if not isinstance(other, BinaryField):',
-        '    return False'
+        # Make sure that we are comparing binary structs
+        'if not hasattr(other, "_is_binary_field"): return False'
     ]
 
     for parent in bases:
@@ -340,14 +334,13 @@ def _is_binary_struct(cls: type):
     Returns if the given class is a binary struct
     """
 
-    return issubclass(cls, BinaryField) and getattr(cls, f'_{cls.__name__}__is_binary_struct', False) == True
+    return hasattr(cls, f'_{cls.__name__}__is_binary_struct')
 
 
 def _is_parent_fn_callable(parent: type, fn_name: str):
     fn = getattr(parent, fn_name, None)
-    is_fn = inspect.isfunction(fn) or inspect.ismethod(fn)
 
-    return parent is not BinaryField and is_fn
+    return inspect.isfunction(fn) or inspect.ismethod(fn)
 
 
 def _get_binary_fields_recursively(cls: type) -> OrderedDict:
@@ -382,10 +375,12 @@ def _set_nested_classes_as_attributes(cls: type):
         setattr(cls, f'{attr_name}_type', attr_type)
 
 
-def _parse_annotations(annotations: dict) -> OrderedDict:
+def _parse_and_verify_annotations(annotations: dict) -> OrderedDict:
     """
     Create an OrderedDict from the annotations,
-    the dict will have names as keys, and types as values
+    the dict will have names as keys, and types as values.
+
+    Makes sure that each annotation can be used inside a binary struct.
     """
 
     ordered_dict = OrderedDict()
@@ -399,6 +394,10 @@ def _parse_annotations(annotations: dict) -> OrderedDict:
 
         else:
             field = annotation
+
+        # Verify the field type
+        if not hasattr(field, '_is_binary_field'):
+            raise TypeError('Given field cannot be used inside a binary struct!')
 
         ordered_dict[name] = field
 
@@ -424,25 +423,18 @@ def _process_class(cls):
     logging.debug(LINE)
     logging.debug(f'Processing {cls} at {hex(id(cls))}')
 
+    # Rebuild the class, we don't want to mess with the old class
+    new_cls_dict = {key: value for key, value in cls.__dict__.items() if key not in ['__dict__', '__weakref__']}
+    cls = type(cls.__name__, cls.__bases__, new_cls_dict)
+
+    # Get a copy of the globals from the scope of the defined class
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['new_binary_buffer'] = new_binary_buffer
     globals['new_typed_buffer'] = new_typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
-    binary_fields = _parse_annotations(annotations)
+    binary_fields = _parse_and_verify_annotations(annotations)
     logging.debug(f'Found fields: {binary_fields}')
-
-    # Make sure the created class is a subclass of BinaryField
-    if not issubclass(cls, BinaryField):
-        cls_bases = tuple() if cls.__bases__ == (object,) else cls.__bases__
-        cls_bases += (BinaryField,)
-
-        # Let python regenerate __dict__ and __weakref__
-        new_dict = dict(cls.__dict__)
-        new_dict.pop('__dict__', None)
-        new_dict.pop('__weakref__', None)
-
-        cls = type(cls.__name__, cls_bases, new_dict)
 
     # Add the class to the globals
     globals[_get_global_name(cls)] = cls
@@ -453,7 +445,8 @@ def _process_class(cls):
         globals[_get_global_name(parent)] = parent
 
     # Mark the class as a binary_struct, add the binary_fields
-    setattr(cls, f'_{cls.__name__}__is_binary_struct', True)
+    setattr(cls, '_is_binary_field', None)
+    setattr(cls, f'_{cls.__name__}__is_binary_struct', None)
     setattr(cls, 'binary_fields', binary_fields)
 
     # These will be used for creating the new class

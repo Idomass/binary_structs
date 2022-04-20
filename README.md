@@ -141,13 +141,7 @@ the class decleration.
 
 ## Implementation
 ### Abstract
-In binary_structs, for each class we decorate The class will be reconstructed and a new parent class will be added, named `BinaryStruct`. `BinaryStruct` inherits from `BinaryField` interface.
-The generated code will be created for `BinaryStruct`, and the original class will be duplicated and recreated
-with a new parent class.
-
-### BinaryField
-Each field that is being used in a `BinaryStruct` must inherit from `BinaryField` class, and each class that is being processed
-by `@binary_struct` decorator will have `BinaryField` added to its inheritance tree.
+Each class, will be copied and will have generated code created for her.
 
 ### TypedBuffer and BinaryBuffer
 These types are generated for each definition using the `new_binary_buffer`/`new_typed_buffer` syntax.
@@ -157,7 +151,6 @@ a `BinaryBuffer` and a `TypedBuffer` respectively with the correct type.
 
 A `TypedBuffer`, as the name suggests, enforces that each parameter that is being
 passed to it has the same type as the underlying type it was declared with.
-`TypedBuffer` implements the `BinaryField` interface
 
 A `BinaryBuffer` is a `TypedBuffer` that also enforces size, and it will create empty instances of its underlying type when
 it is created
@@ -171,10 +164,10 @@ Endianness converstion had 2 main issues:
     This happens because of the way `@binary_struct` decorator operates.
     It generates all the the code from the annotations types, that might have the wrong endianness.
     The endian decorators change the annotations recursively - for primitive types the use a pre-defined conversion
-    dictionary, and for `BinaryFields` they rebuild the classes the same way `@binary_struct` would.
+    dictionary, and for binary fields they rebuild the classes the same way `@binary_struct` would.
     This means that every class is being built twice!
 
-- Nested `BinaryFields` cannot be referenced easily:
+- Nested field cannot be referenced easily:
 
     Consider the following:
     ```python

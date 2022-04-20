@@ -17,6 +17,10 @@ def test_valid_init():
     assert isinstance(a[0], uint8_t)
     assert a == [1, 2, 3]
 
+def test_invalid_buffer():
+    with pytest.raises(TypeError):
+        a = new_typed_buffer(int)
+
 def test_invalid_init():
     with pytest.raises(TypeError):
         new_typed_buffer(uint8_t)(['BadValue'])
