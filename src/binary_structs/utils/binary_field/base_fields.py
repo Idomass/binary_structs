@@ -4,11 +4,24 @@ Each type manages a region of memory.
 """
 
 import re
-
+import sys
 from ctypes import c_int8, c_uint8, c_int16, c_uint16, c_int32, c_uint32, c_int64, c_uint64
-
+from enum import Enum
 
 INT_RE_EXPR = re.compile('(le|be)_(u*)int([0-9]+)_t')
+
+
+class Endianness(Enum):
+    NONE = ''
+    BIG = 'be'
+    LITTLE = 'le'
+    HOST = LITTLE if sys.byteorder == 'little' else BIG
+
+
+class PrimitiveTypeField:
+    """
+    Designed for primitive ctypes types, wraps them and adds functionalities
+    """
 
 
 def _generate_integer_class(cls):
@@ -39,13 +52,43 @@ def _generate_integer_class(cls):
         return self
 
 
+    def __init__(self, value = 0):
+        if not isinstance(value, (int, type(self))):
+            raise TypeError('Incompatible type passed!')
+
+        self.value = getattr(value, 'value', value)
+
+
     def __eq__(self, other):
         return self.value == getattr(other, 'value', other)
 
 
-    def __invert__(self) -> bytes:
-        return bytes(~x & 0xff for x in bytes(self))
+    def __bitwise_operation(op1, op2, operation) -> bytes:
+        op1_bytes = op1.memory
+        op2_bytes = op2.memory
 
+        bigger_buf_len = max(len(op1_bytes), len(op2_bytes))
+
+        op1_bytes = op1_bytes + b'\x00' * (bigger_buf_len - len(op1_bytes))
+        op2_bytes = op2_bytes + b'\x00' * (bigger_buf_len - len(op2_bytes))
+
+        return bytes(getattr(int, operation)(a, b) for (a, b) in zip(op1_bytes, op2_bytes))
+
+
+    def __and__(self, other) -> bytes:
+        return __bitwise_operation(self, other, '__and__')
+
+
+    def __or__(self, other) -> bytes:
+        return __bitwise_operation(self, other, '__or__')
+
+
+    def __xor__(self, other) -> bytes:
+        return __bitwise_operation(self, other, '__xor__')
+
+
+    def __invert__(self) -> bytes:
+        return bytes(~x & 0xff for x in self.memory)
 
     @classmethod
     def deserialize(cls, buf):
@@ -70,7 +113,11 @@ def _generate_integer_class(cls):
 
         # Functions
         '__new__': __new__,
+        '__init__': __init__,
         '__eq__': __eq__,
+        '__and__': __and__,
+        '__or__': __or__,
+        '__xor__': __xor__,
         '__invert__': __invert__,
         'deserialize': deserialize
     }
