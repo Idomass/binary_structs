@@ -49,13 +49,26 @@ def test_valid_size(underlying_type, default_value, size, buf):
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_valid_deserialization(underlying_type, default_value, size, buf):
-    a = underlying_type.deserialize(buf)
+    a = underlying_type.deserialize(bytearray(buf))
+
     assert a == default_value
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_invalid_deserialization_empty(underlying_type, default_value, size, buf):
     with pytest.raises(ValueError):
-        underlying_type.deserialize(b'')
+        underlying_type.deserialize(bytearray())
+
+
+# Test deserialize memory is the same
+@pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
+def test_deserialize_memory_preserved(underlying_type, default_value, size, buf):
+    arr = bytearray(buf)
+    a = underlying_type.deserialize(arr)
+
+    assert a.memory == arr
+    a.memory[-1] = ~a.memory[-1] & 0xFF
+    assert a.memory == arr
+
 
 @pytest.mark.parametrize('underlying_type, default_value, size, buf', test_buffer)
 def test_valid_serialization(underlying_type, default_value, size, buf):
@@ -96,7 +109,7 @@ bw_op = ['__and__', '__xor__', '__or__']
 two_operands_list = [(kind1, kind2, op) for kind1 in binary_fields for kind2 in binary_fields for op in bw_op]
 
 def _get_random_bytes_buffer(size, max_size):
-    return bytes([random.randint(0x0, 0xff) for _ in range(size)]) + b'\x00' * (max_size - size)
+    return bytearray([random.randint(0x0, 0xff) for _ in range(size)]) + b'\x00' * (max_size - size)
 
 @pytest.mark.parametrize('field_type', binary_fields)
 def test_bitwise_not(field_type):
@@ -123,13 +136,6 @@ def test_bitwise_operator2(type1, type2, operand):
     assert bitwised_buf == getattr(PrimitiveTypeField, operand)(num1, num2)
 
 # Compatible init test
-@pytest.mark.parametrize('type1', binary_fields)
-def test_compatible_types_init(type1):
-    a = type1(0x33)
-    b = type1(a)
-
-    assert a.value == b.value
-
 incompatible_type = [(type1, type2) for type1 in binary_fields for type2 in binary_fields if type1 != type2]
 @pytest.mark.parametrize('type1, type2', incompatible_type)
 def test_incompatible_types_init(type1, type2):
