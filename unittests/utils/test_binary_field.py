@@ -135,13 +135,6 @@ def test_bitwise_operator2(type1, type2, operand):
     assert bitwised_buf == getattr(type1, operand)(num1, num2)
 
 # Compatible init test
-@pytest.mark.parametrize('type1', binary_fields)
-def test_compatible_types_init(type1):
-    a = type1(0x33)
-    b = type1(a)
-
-    assert a.value == b.value
-
 incompatible_type = [(type1, type2) for type1 in binary_fields for type2 in binary_fields if type1 != type2]
 @pytest.mark.parametrize('type1, type2', incompatible_type)
 def test_incompatible_types_init(type1, type2):

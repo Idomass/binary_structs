@@ -44,6 +44,16 @@ def test_valid_append_differnent_ctor(typed_buffer):
 
     assert typed_buffer[-1].value == 5
 
+
+def test_typed_buffer_memory_attr(typed_buffer):
+    arr = typed_buffer([0x20] * 5)
+
+    assert arr.memory == memoryview(arr)
+
+# For testing differnt typed_buffers
+different_typed_buffers = [(new_typed_buffer(type1), new_typed_buffer(type2)) for type1, type2 in product(binary_fields, binary_fields)
+                           if type1 is not type2 and type1.static_size != type2.static_size]
+
 def test_item_assignment_valid(typed_buffer):
     typed_buffer[0] = le_uint8_t(1)
 

@@ -39,33 +39,13 @@ def _generate_integer_class(cls):
     # Get the correct parent with the correct endianness
     ctypes_class = getattr(globals()[f'c_{sign}int{size_in_bits}'], f'__ctype_{endianness}__')
 
-
-    # Functions that will be added to the class
-    def __new__(cls, *args, **kwargs):
-        # Allocate memory and assign ctypes to handle it
-        mem = memoryview(bytearray(size_in_bytes))
-        self = cls.from_buffer(mem)
-
-        # Assign memory to the new instance
-        self._mem = mem
-
-        return self
-
-
-    def __init__(self, value = 0):
-        if not isinstance(value, (int, type(self))):
-            raise TypeError('Incompatible type passed!')
-
-        self.value = getattr(value, 'value', value)
-
-
     def __eq__(self, other):
         return self.value == getattr(other, 'value', other)
 
 
     def __bitwise_operation(op1, op2, operation) -> bytes:
-        op1_bytes = op1.memory
-        op2_bytes = op2.memory
+        op1_bytes = bytes(op1.memory)
+        op2_bytes = bytes(op2.memory)
 
         bigger_buf_len = max(len(op1_bytes), len(op2_bytes))
 
@@ -90,39 +70,33 @@ def _generate_integer_class(cls):
     def __invert__(self) -> bytes:
         return bytes(~x & 0xff for x in self.memory)
 
-    @classmethod
-    def deserialize(cls, buf):
-        new_cls = cls.from_buffer(buf)
-        new_cls._mem = buf
-
-        return new_cls
-
 
     @property
-    def memory(self):
-        return self._mem
+    def memory(self) -> memoryview:
+        return memoryview(self).cast('B', (size_in_bytes,))
 
 
     int_dict = {
         # Attributes
         '_is_binary_field': True,
+        'memory': memory,
         'static_size': size_in_bytes,
         'signed': signed,
         'size_in_bytes': size_in_bytes,
-        'memory': memory,
 
         # Functions
-        '__new__': __new__,
-        '__init__': __init__,
         '__eq__': __eq__,
         '__and__': __and__,
         '__or__': __or__,
         '__xor__': __xor__,
-        '__invert__': __invert__,
-        'deserialize': deserialize
+        '__invert__': __invert__
     }
 
     new_cls = type(cls.__name__, (ctypes_class, ), int_dict)
+    # Set an alias for deserialize for all class implementations
+    setattr(new_cls,                'deserialize', new_cls.from_buffer)
+    setattr(new_cls.__ctype_le__,   'deserialize', new_cls.__ctype_le__.from_buffer)
+    setattr(new_cls.__ctype_be__,   'deserialize', new_cls.__ctype_be__.from_buffer)
 
     # From the python source code:
     # "Each *simple* type that supports different byte orders has an
