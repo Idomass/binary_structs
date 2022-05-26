@@ -104,8 +104,8 @@ def _set_binary_attr(self: type, field_name: str, field_value):
 
         object.__setattr__(self, field_name, new_buf)
 
-    elif getattr(field, '__name__', '') == 'BinaryBuffer':
-        new_buf = new_binary_buffer(field.UNDERLYING_TYPE, len(field))(field_value)
+    elif hasattr(field, '_type_'):
+        new_buf = new_binary_buffer(field.UNDERLYING_TYPE, len(field))(*field_value)
 
         object.__setattr__(self, field_name, new_buf)
 
