@@ -15,7 +15,7 @@ import sys
 import logging
 import inspect
 
-from binary_structs.utils import BufferField, new_binary_buffer
+from binary_structs.utils import BufferField, new_binary_buffer, new_typed_buffer
 
 from collections import OrderedDict
 
@@ -128,6 +128,10 @@ def _init_var(name: str, field_type: type, globals: dict, default_value: type) -
     if issubclass(field_type, BufferField):
         init_var =  [f'{name} = {new_type_name}(*{name} or {default_value_name} or [])']
         init_var += [f'object.__setattr__(self, "{name}", {name})']
+
+        # If a buffer with an undertermined size was passed, update the type helper
+        if 'TypedBuffer' in field_type.__name__:
+            init_var += [f'self.{name}_type = type({name})']
 
     else:
         init_var = [f'self._init_binary_field("{name}", {new_type_name}, '
@@ -382,7 +386,7 @@ def _parse_and_verify_annotations(annotations: dict) -> OrderedDict:
     for name, annotation in annotations.items():
         if isinstance(annotation, list):
             if len(annotation) == 1:
-                field = new_binary_buffer(annotation[0], 0)
+                field = new_typed_buffer(annotation[0])
 
             elif len(annotation) == 2:
                 field = new_binary_buffer(*annotation)
@@ -424,7 +428,6 @@ def _process_class(cls):
 
     # Get a copy of the globals from the scope of the defined class
     globals = sys.modules[cls.__module__].__dict__.copy()
-    globals['new_binary_buffer'] = new_binary_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
     binary_fields = _parse_and_verify_annotations(annotations)

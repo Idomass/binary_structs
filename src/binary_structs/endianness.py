@@ -3,6 +3,7 @@ This file exports the big_endian and little_endian decorators,
 They are used to convert a BinaryStruct endiannes
 """
 
+import ctypes
 import logging
 
 from copy import deepcopy
@@ -41,11 +42,15 @@ def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: End
 def _convert_buffer(buffer: type, endianness: Endianness) -> type:
     """
     Convert a TypedBuffer/BinaryBuffer endianness
-
-    # TODO This does not convert endianness
     """
 
-    return new_binary_buffer(buffer.element_type, buffer.static_size)
+    new_element_type = _convert_primitive_type_endianness(buffer.element_type, endianness)
+
+    if issubclass(buffer, ctypes.Array):
+        return new_binary_buffer(new_element_type, buffer.static_size)
+
+    else:
+        return new_typed_buffer(new_element_type)
 
 
 def _convert_class_annotations_endianness(cls, endianness: Endianness):

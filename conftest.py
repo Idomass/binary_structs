@@ -44,10 +44,10 @@ class DuplicateClass:
 
 # TODO: Dynamic classes that start with the buffer
 # Will cause problems
-# @binary_struct
-# class DynamicClass:
-#     magic: le_uint8_t
-#     buf: [le_uint8_t]
+@binary_struct
+class DynamicClass:
+    magic: le_uint8_t
+    buf: [le_uint8_t]
 
 @binary_struct
 class InheritedClass(BufferClass):
@@ -67,9 +67,13 @@ class MultipleNestedClass:
 class DefaultValueClass:
     default_value: le_uint8_t = 5
 
-# @binary_struct
-# class DefaultTypedBufferClass:
-#     buf: [le_uint8_t] = range(5)
+@binary_struct
+class DefaultTypedBufferClass:
+    buf: [le_uint8_t] = range(5)
+
+@binary_struct
+class DefaultBinaryBufferClass:
+    buf: [le_uint8_t, 10] = range(5)
 
 @binary_struct
 class DefaultBinaryBufferClass:
@@ -94,7 +98,7 @@ class DefaultInheritedClass(DefaultNestedClass):
 default_structs = [
     DefaultValueClass(5),
     DefaultBinaryBufferClass(list(range(5)) + [0] * 5),
-    # DefaultTypedBufferClass(list(range(5))),
+    DefaultTypedBufferClass(list(range(5))),
     DefaultNestedClass([5, range(3)]),
     DefaultNestedArgsClass([5, range(7)]),
     DefaultNestedKWargsClass(nested={'size': 5}),
@@ -119,10 +123,10 @@ test_structs = [
         DuplicateClass,
         {'magic': 0xcafebabe}
     ],
-    # [
-    #     DynamicClass,
-    #     {'magic': 0xef, 'buf': range(99)}
-    # ],
+    [
+        DynamicClass,
+        {'magic': 0xef, 'buf': range(99)}
+    ],
     [
         InheritedClass,
         {'size': 50, 'buf': range(9), 'magic': 0x12345678}
@@ -168,9 +172,9 @@ def NestedClassFixture():
 def DuplicateClassFixture():
     return DuplicateClass
 
-# @pytest.fixture
-# def DynamicClassFixture():
-#     return DynamicClass
+@pytest.fixture
+def DynamicClassFixture():
+    return DynamicClass
 
 # Inheritence testing
 @pytest.fixture
@@ -181,6 +185,6 @@ def InheritedClassFixture():
 def MultipleInheritedClassFixture():
     return MultipleInheritedClass
 
-# @pytest.fixture
-# def DefaultTypedBufferClassFixture():
-#     return DefaultTypedBufferClass
+@pytest.fixture
+def DefaultTypedBufferClassFixture():
+    return DefaultTypedBufferClass

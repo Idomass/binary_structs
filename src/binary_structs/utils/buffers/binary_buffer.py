@@ -10,7 +10,7 @@ from typing import Iterable
 
 class BufferField:
     """
-    Deperecated
+    Deperecated, used for backwards-compatibility
     """
 
 

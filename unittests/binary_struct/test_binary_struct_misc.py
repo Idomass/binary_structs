@@ -31,13 +31,6 @@ def test_valid_size_empty(EmptyClassFixture):
 
     assert a.size_in_bytes == 0
 
-def test_valid_size_dynamic(DynamicClassFixture):
-    a = DynamicClassFixture(5, [1, 2, 3])
-
-    assert a.size_in_bytes == 4
-    a.buf.append(90)
-    assert a.size_in_bytes == 5
-
 # Equal tests
 available_decorators = [empty_decorator, big_endian, little_endian]
 
@@ -99,20 +92,8 @@ def test_valid_item_assignment_simple(SimpleClassFixture):
     assert isinstance(a.a, le_uint8_t)
     assert a.a == 58
 
-def test_valid_item_assignment_dyn_buf(DynamicClassFixture):
-    a = DynamicClassFixture()
-
-    a.buf = range(9)
-    assert a.buf == list(range(9))
-
-def test_valid_item_assignment_dyn_buf_bytes(DynamicClassFixture):
-    a = DynamicClassFixture()
-
-    a.buf = bytes(range(17))
-    assert a.buf == list(range(17))
-
 def test_invalid_item_assignement_wrong_type(DynamicClassFixture):
-    a = DynamicClassFixture()
+    a = DynamicClassFixture(buf=[1, 2])
 
     with pytest.raises(TypeError):
         a.buf = ['1', '2']
@@ -271,3 +252,14 @@ def test_valid_class_2_binary_buffers_sizes_and_types_not_corrupted():
     assert A.buf2_type.element_type is le_uint32_t
     assert len(a.buf1) == 32
     assert len(a.buf2) == 16
+
+
+def test_valid_dynamic_class_type_helper_updates(DynamicClassFixture):
+    arr1 = DynamicClassFixture()
+    assert isinstance(arr1.buf, arr1.buf_type)
+
+    arr2 = DynamicClassFixture(buf=[1, 2, 3])
+    assert isinstance(arr2.buf, arr2.buf_type)
+
+    assert arr2.buf != arr1.buf
+    assert arr1.buf_type is not arr2.buf_type
