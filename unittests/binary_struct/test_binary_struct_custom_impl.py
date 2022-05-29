@@ -169,7 +169,7 @@ def test_valid_class_custom_init_deserialize_inherited(decorator, CustomInitClsF
         b: uint8_t
 
     cls = decorator(B)
-    cls.deserialize(b'XD')
+    cls.deserialize(bytearray(b'XD'))
 
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
@@ -180,4 +180,4 @@ def test_valid_class_custom_init_deserialize_nested(decorator, CustomInitClsFixt
         b: uint8_t
 
     cls = decorator(B)
-    cls.deserialize(b'XD')
+    cls.deserialize(bytearray(b'XD'))

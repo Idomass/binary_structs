@@ -23,6 +23,7 @@ def new_binary_buffer(underlying_type: type, size: int):
 
     class BinaryBuffer(BufferField, underlying_type * size):
         _is_binary_field = True
+        element_type = underlying_type
         static_size = size
         size_in_bytes = size * underlying_type.static_size
 

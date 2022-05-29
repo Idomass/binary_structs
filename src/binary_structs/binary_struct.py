@@ -99,13 +99,8 @@ def _set_binary_attr(self: type, field_name: str, field_value):
 
     field = getattr(self, field_name)
 
-    if getattr(field, '__name__', '') == 'TypedBuffer':
-        raise NotImplementedError
-
-        object.__setattr__(self, field_name, new_buf)
-
-    elif hasattr(field, '_type_'):
-        new_buf = new_binary_buffer(field.UNDERLYING_TYPE, len(field))(*field_value)
+    if isinstance(field, BufferField):
+        new_buf = new_binary_buffer(field.element_type, len(field))(*field_value)
 
         object.__setattr__(self, field_name, new_buf)
 
@@ -387,7 +382,7 @@ def _parse_and_verify_annotations(annotations: dict) -> OrderedDict:
     for name, annotation in annotations.items():
         if isinstance(annotation, list):
             if len(annotation) == 1:
-                raise NotImplementedError
+                field = new_binary_buffer(annotation[0], 0)
 
             elif len(annotation) == 2:
                 field = new_binary_buffer(*annotation)

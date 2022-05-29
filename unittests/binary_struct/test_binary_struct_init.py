@@ -60,7 +60,7 @@ def test_valid_buffer(BufferClassFixture):
     assert isinstance(a.buf[0], le_uint8_t)
 
 def test_invalid_length_buffer(BufferClassFixture):
-    with pytest.raises():
+    with pytest.raises(IndexError):
         BufferClassFixture(90, [100] * 90)
 
 def test_valid_empty_buffer(BufferClassFixture):
@@ -70,7 +70,7 @@ def test_valid_empty_buffer(BufferClassFixture):
         assert element.value == 0
 
 def test_invalid_buffer_overflow(BufferClassFixture):
-    with pytest.raises():
+    with pytest.raises(AttributeError):
         a = BufferClassFixture(32, [67] * 32)
         a.buf.append(6)
 

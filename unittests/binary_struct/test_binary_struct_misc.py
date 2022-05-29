@@ -126,7 +126,7 @@ def test_valid_item_assignment_bin_buf(BufferClassFixture):
 def test_invalid_item_assignment_bin_buf_too_big(BufferClassFixture):
     a = BufferClassFixture()
 
-    with pytest.raises():
+    with pytest.raises(IndexError):
         a.buf = range(99)
 
 def test_valid_item_assignment_bin_buf_bytes(BufferClassFixture):
@@ -138,7 +138,7 @@ def test_valid_item_assignment_bin_buf_bytes(BufferClassFixture):
 def test_invalid_item_assignment_bin_buf_bytes_too_big(BufferClassFixture):
     a = BufferClassFixture()
 
-    with pytest.raises():
+    with pytest.raises(IndexError):
         a.buf = bytes(range(99))
 
 def test_valid_item_assignment_nested(NestedClassFixture):
@@ -204,7 +204,7 @@ def test_valid_dict_conversion_simple_big(SimpleClassFixture):
 def test_valid_dict_conversion_nested_big(NestedClassFixture, BufferClassFixture):
     nested = big_endian(NestedClassFixture)(buffer=[5, range(3)], magic=42)
 
-    assert dict(nested) == {'buffer': BufferClassFixture(5, range(3)), 'magic': be_uint32_t(42)}
+    assert dict(nested) == {'buffer': big_endian(BufferClassFixture)(5, range(3)), 'magic': be_uint32_t(42)}
 
 
 def test_valid_dict_conversion_inheritence_big(InheritedClassFixture):
@@ -244,8 +244,8 @@ def test_valid_class_2_buffers_dynamics_types_not_corrupted():
         buf1: [le_uint8_t]
         buf2: [le_uint32_t]
 
-    assert A.buf1_type.UNDERLYING_TYPE is le_uint8_t
-    assert A.buf2_type.UNDERLYING_TYPE is le_uint32_t
+    assert A.buf1_type.element_type is le_uint8_t
+    assert A.buf2_type.element_type is le_uint32_t
 
 
 def test_valid_class_2_buffers_dynamics_are_different():
@@ -267,7 +267,7 @@ def test_valid_class_2_binary_buffers_sizes_and_types_not_corrupted():
 
     a = A()
 
-    assert A.buf1_type.UNDERLYING_TYPE is le_uint8_t
-    assert A.buf2_type.UNDERLYING_TYPE is le_uint32_t
+    assert A.buf1_type.element_type is le_uint8_t
+    assert A.buf2_type.element_type is le_uint32_t
     assert len(a.buf1) == 32
     assert len(a.buf2) == 16

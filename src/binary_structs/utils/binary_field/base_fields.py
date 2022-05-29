@@ -92,7 +92,7 @@ def _generate_integer_class(cls):
         '__invert__': __invert__
     }
 
-    new_cls = type(cls.__name__, (ctypes_class, ), int_dict)
+    new_cls = type(cls.__name__, (ctypes_class, PrimitiveTypeField, ), int_dict)
     # Set an alias for deserialize for all class implementations
     setattr(new_cls,                'deserialize', new_cls.from_buffer)
     setattr(new_cls.__ctype_le__,   'deserialize', new_cls.__ctype_le__.from_buffer)

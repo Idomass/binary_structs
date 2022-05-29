@@ -41,14 +41,11 @@ def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: End
 def _convert_buffer(buffer: type, endianness: Endianness) -> type:
     """
     Convert a TypedBuffer/BinaryBuffer endianness
+
+    # TODO This does not convert endianness
     """
 
-    if buffer.__name__ == 'TypedBuffer':
-        raise NotImplementedError
-
-    else:
-        # BinaryBuffer
-        return new_binary_buffer(buffer.UNDERLYING_TYPE, buffer.static_size)
+    return new_binary_buffer(buffer.element_type, buffer.static_size)
 
 
 def _convert_class_annotations_endianness(cls, endianness: Endianness):
