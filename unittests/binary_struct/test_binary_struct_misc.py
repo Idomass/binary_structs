@@ -1,7 +1,6 @@
 import pytest
 
 from copy import deepcopy
-from binary_structs import MaxSizeExceededError
 from conftest import EmptyClass, empty_decorator, test_structs
 
 from binary_structs import binary_struct, big_endian, little_endian,    \
@@ -127,7 +126,7 @@ def test_valid_item_assignment_bin_buf(BufferClassFixture):
 def test_invalid_item_assignment_bin_buf_too_big(BufferClassFixture):
     a = BufferClassFixture()
 
-    with pytest.raises(MaxSizeExceededError):
+    with pytest.raises():
         a.buf = range(99)
 
 def test_valid_item_assignment_bin_buf_bytes(BufferClassFixture):
@@ -139,7 +138,7 @@ def test_valid_item_assignment_bin_buf_bytes(BufferClassFixture):
 def test_invalid_item_assignment_bin_buf_bytes_too_big(BufferClassFixture):
     a = BufferClassFixture()
 
-    with pytest.raises(MaxSizeExceededError):
+    with pytest.raises():
         a.buf = bytes(range(99))
 
 def test_valid_item_assignment_nested(NestedClassFixture):

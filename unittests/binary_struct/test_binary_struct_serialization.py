@@ -13,8 +13,8 @@ structs_formats = [
     ['I32s', [423652, bytes(range(3)) + b'\x00' * 29]],
     # DuplicateClass
     ['I', [0xcafebabe]],
-    # DynamicClass
-    ['B99s', [0xef, bytes(range(99))]],
+    # # DynamicClass
+    # ['B99s', [0xef, bytes(range(99))]],
     # InheritedClass
     ['I32sI', [50, bytes(range(9)) + b'\x00' * 23, 0x12345678]],
     # MultipleInheritedClass

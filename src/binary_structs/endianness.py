@@ -8,7 +8,7 @@ import logging
 from copy import deepcopy
 from binary_structs.utils import *
 from binary_structs.binary_struct import binary_struct, _is_binary_struct
-from binary_structs.utils.buffers.typed_buffer import BufferField
+from binary_structs.utils.buffers.binary_buffer import BufferField
 
 
 def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
@@ -44,7 +44,7 @@ def _convert_buffer(buffer: type, endianness: Endianness) -> type:
     """
 
     if buffer.__name__ == 'TypedBuffer':
-        return new_typed_buffer(buffer.UNDERLYING_TYPE)
+        raise NotImplementedError
 
     else:
         # BinaryBuffer

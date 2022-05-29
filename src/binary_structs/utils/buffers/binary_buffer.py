@@ -8,6 +8,12 @@ from functools import lru_cache
 from typing import Iterable
 
 
+class BufferField:
+    """
+    Deperecated
+    """
+
+
 @lru_cache
 def new_binary_buffer(underlying_type: type, size: int):
     """
@@ -15,7 +21,7 @@ def new_binary_buffer(underlying_type: type, size: int):
     A binary buffer is a wrapper to ctypes buffers
     """
 
-    class BinaryBuffer(underlying_type * size):
+    class BinaryBuffer(BufferField, underlying_type * size):
         _is_binary_field = True
         static_size = size
         size_in_bytes = size * underlying_type.static_size

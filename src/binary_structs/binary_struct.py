@@ -15,7 +15,7 @@ import sys
 import logging
 import inspect
 
-from binary_structs.utils import BufferField, new_binary_buffer, new_typed_buffer
+from binary_structs.utils import BufferField, new_binary_buffer
 
 from collections import OrderedDict
 
@@ -100,7 +100,7 @@ def _set_binary_attr(self: type, field_name: str, field_value):
     field = getattr(self, field_name)
 
     if getattr(field, '__name__', '') == 'TypedBuffer':
-        new_buf = new_typed_buffer(field.UNDERLYING_TYPE)(field_value)
+        raise NotImplementedError
 
         object.__setattr__(self, field_name, new_buf)
 
@@ -131,7 +131,7 @@ def _init_var(name: str, field_type: type, globals: dict, default_value: type) -
 
     # Generate function text for the given type
     if issubclass(field_type, BufferField):
-        init_var =  [f'{name} = {new_type_name}({name} or {default_value_name} or [])']
+        init_var =  [f'{name} = {new_type_name}(*{name} or {default_value_name} or [])']
         init_var += [f'object.__setattr__(self, "{name}", {name})']
 
     else:
@@ -387,7 +387,7 @@ def _parse_and_verify_annotations(annotations: dict) -> OrderedDict:
     for name, annotation in annotations.items():
         if isinstance(annotation, list):
             if len(annotation) == 1:
-                field = new_typed_buffer(annotation[0])
+                raise NotImplementedError
 
             elif len(annotation) == 2:
                 field = new_binary_buffer(*annotation)
@@ -430,7 +430,6 @@ def _process_class(cls):
     # Get a copy of the globals from the scope of the defined class
     globals = sys.modules[cls.__module__].__dict__.copy()
     globals['new_binary_buffer'] = new_binary_buffer
-    globals['new_typed_buffer'] = new_typed_buffer
 
     annotations = cls.__dict__.get('__annotations__', {})
     binary_fields = _parse_and_verify_annotations(annotations)

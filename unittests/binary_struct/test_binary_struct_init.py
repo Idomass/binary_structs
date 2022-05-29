@@ -1,7 +1,7 @@
 import pytest
 
 from conftest import default_structs
-from binary_structs import binary_struct, uint32_t, MaxSizeExceededError, le_uint8_t, le_uint32_t
+from binary_structs import binary_struct, uint32_t, le_uint8_t, le_uint32_t
 
 
 def test_empty_class(EmptyClassFixture):
@@ -60,7 +60,7 @@ def test_valid_buffer(BufferClassFixture):
     assert isinstance(a.buf[0], le_uint8_t)
 
 def test_invalid_length_buffer(BufferClassFixture):
-    with pytest.raises(MaxSizeExceededError):
+    with pytest.raises():
         BufferClassFixture(90, [100] * 90)
 
 def test_valid_empty_buffer(BufferClassFixture):
@@ -70,7 +70,7 @@ def test_valid_empty_buffer(BufferClassFixture):
         assert element.value == 0
 
 def test_invalid_buffer_overflow(BufferClassFixture):
-    with pytest.raises(MaxSizeExceededError):
+    with pytest.raises():
         a = BufferClassFixture(32, [67] * 32)
         a.buf.append(6)
 

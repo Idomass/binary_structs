@@ -98,7 +98,6 @@ def test_valid_class_old_still_valid_inheritance():
 
     assert B.__base__ is A
     assert A.a_type is uint32_t
-    assert A.b_type is new_typed_buffer(uint8_t)
     assert A.c_type is new_binary_buffer(uint8_t, 32)
 
 def test_valid_class_longer_inheritance_tree(BufferClassFixture):
@@ -242,8 +241,6 @@ def test_valid_init_class_dict_and_weakref_not_broken_after_conversion(decorator
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_init_raw_typed_buffer(decorator):
-    TypedBuffer = new_typed_buffer(uint8_t)
-
     @binary_struct
     class A:
         buf: TypedBuffer
