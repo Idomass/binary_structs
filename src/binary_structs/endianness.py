@@ -5,8 +5,9 @@ They are used to convert a BinaryStruct endiannes
 
 import ctypes
 import logging
-
 from copy import deepcopy
+from typing import Tuple
+
 from binary_structs.utils import *
 from binary_structs.binary_struct import binary_struct, _is_binary_struct
 from binary_structs.utils.buffers.binary_buffer import BufferField
@@ -82,7 +83,7 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
             annotations[annotation_name] = new_kind
 
 
-def _convert_endianness(cls: type, new_bases: tuple[type], endianness: Endianness):
+def _convert_endianness(cls: type, new_bases: Tuple[type], endianness: Endianness):
     """
     Convert the endianness of a single class to the given endianness.
     The class is being rebuilt in order to not destroy the old one.

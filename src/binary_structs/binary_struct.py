@@ -14,6 +14,7 @@ class BufferWithSize:
 import sys
 import logging
 import inspect
+from typing import List, Tuple
 
 from binary_structs.utils import BufferField, new_binary_buffer, new_typed_buffer
 
@@ -23,7 +24,7 @@ from collections import OrderedDict
 LINE = '-' * 100
 
 
-def _create_fn(name, local_params: list[str], lines: list[str], globals: dict):
+def _create_fn(name, local_params: List[str], lines: List[str], globals: dict):
     """
     This function receives a name for the function, and returns a
     function with the given locals and globals
@@ -108,7 +109,7 @@ def _set_binary_attr(self: type, field_name: str, field_value):
         self._init_binary_field(field_name, type(field), field_value)
 
 
-def _init_var(name: str, field_type: type, globals: dict, default_value: type) -> list[str]:
+def _init_var(name: str, field_type: type, globals: dict, default_value: type) -> List[str]:
     """
     Helper function for _create_init_fn that helps to init a variable.
     Returns the python code that is required to init that variable.
@@ -140,7 +141,7 @@ def _init_var(name: str, field_type: type, globals: dict, default_value: type) -
     return init_var
 
 
-def _create_init_fn(binary_attrs: dict, globals: dict, bases: tuple[type]) -> str:
+def _create_init_fn(binary_attrs: dict, globals: dict, bases: Tuple[type]) -> str:
     """
     Create init function and return it.
 
@@ -181,7 +182,7 @@ def _create_init_fn(binary_attrs: dict, globals: dict, bases: tuple[type]) -> st
     return _create_fn('_bs_init', init_args + init_kwargs, init_txt or ['pass'], globals)
 
 
-def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str:
+def _create_bytes_fn(attributes: dict, globals: dict, bases: Tuple[type]) -> str:
     """
     Create bytes function and return it.
     The created function will call bytes() on every class member
@@ -204,7 +205,7 @@ def _create_bytes_fn(attributes: dict, globals: dict, bases: tuple[type]) -> str
     return _create_fn('_bs_bytes', ['self'], lines, globals)
 
 
-def _create_equal_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
+def _create_equal_fn(binary_fields: dict, globals: dict, bases: Tuple[type]) -> str:
     """
     Create and __eq__ function for a BinaryStruct and return it as a string.
     This function will compare all fields that were declared in the annotations.
@@ -230,7 +231,7 @@ def _create_equal_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> 
     return _create_fn('_bs_eq', ['self, other'], lines, globals)
 
 
-def _create_string_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
+def _create_string_fn(binary_fields: dict, globals: dict, bases: Tuple[type]) -> str:
     """
     Create a function that converts the struct into a string, for visual purposes
     """
@@ -255,7 +256,7 @@ def _create_string_fn(binary_fields: dict, globals: dict, bases: tuple[type]) ->
     return _create_fn('_bs_str', ['self'], lines, globals)
 
 
-def _create_iter_fn(binary_fields: dict, globals: dict, bases: tuple[type]):
+def _create_iter_fn(binary_fields: dict, globals: dict, bases: Tuple[type]):
     """
     Creates the __iter__ function to allow dict conversion
     """
@@ -304,7 +305,7 @@ def _create_deserialize_fn(binary_fields: dict, globals: dict, cls: type) -> str
     return _create_fn('deserialize', ['buf'], lines or ['pass'], globals)
 
 
-def _create_size_fn(binary_fields: dict, globals: dict, bases: tuple[type]) -> str:
+def _create_size_fn(binary_fields: dict, globals: dict, bases: Tuple[type]) -> str:
     """
     Generates the size property and returns the function as a string
     Created function will search the size_in_bytes attribute of every derived class
