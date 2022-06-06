@@ -6,6 +6,20 @@ from conftest import available_decorators
 
 decorators_without_format = [decorator[0] for decorator in available_decorators]
 
+# Fixture
+@pytest.fixture
+def CustomInitClsFixture():
+    @binary_struct
+    class CustomInitCls:
+        a: uint8_t
+
+        def __init__(self, a, b) -> None:
+            pass
+
+    return CustomInitCls
+
+
+# Tests
 def test_valid_class_custom_fn_implementation_multiple_inheritance():
     class B:
         def foo(self):
@@ -23,6 +37,7 @@ def test_valid_class_custom_fn_implementation_multiple_inheritance():
     assert a.foo()
     assert a.bar()
 
+
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_custom_implementation_init(decorator):
     @binary_struct
@@ -30,7 +45,7 @@ def test_valid_class_custom_implementation_init(decorator):
         times_two: uint8_t
 
         def __init__(self, times_two):
-            self.TimesTwo__init__(times_two * 2)
+            self._bs_init(times_two * 2)
 
     cls = decorator(TimesTwo)
     a = cls(5)
@@ -43,22 +58,21 @@ def test_valid_class_custom_implementation_init_with_inheritance(decorator):
     class A:
         a: uint8_t
 
-        def __init__(self, a, msg1, msg2 = 5):
-            self.A__init__(a)
-            self.msg1 = msg1
-            self.msg2 = msg2
-
     @binary_struct
     class B(A):
         b: uint8_t
 
-    cls = decorator(B)
-    b = cls(9, "Hello", b=16)
+        def __init__(self, a, b):
+            a *= 5
+            b *= 3
+            self._bs_init(a, b)
 
-    assert b.msg1 == "Hello"
-    assert b.msg2 == 5
-    assert b.a.value == 9
-    assert b.b.value == 16
+    cls = decorator(B)
+    b = cls(9, b=16)
+
+    assert b.a.value == 45
+    assert b.b.value == 48
+
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_custom_implementation_init_with_multiple_inheritance(decorator):
@@ -66,48 +80,24 @@ def test_valid_class_custom_implementation_init_with_multiple_inheritance(decora
     class A:
         a: uint8_t
 
-        def __init__(self, a, msg1):
-            self.A__init__(a)
-            self.msg1 = msg1
-
     @binary_struct
     class B:
         b: uint8_t
-
-        def __init__(self, b, msg2 = 5):
-            self.B__init__(b)
-            self.msg2 = msg2
 
     @binary_struct
     class C(A, B):
         c: [uint8_t]
 
-        def __init__(self, a, msg1, b, msg2, msg3):
-            self.C__init__(a, msg1, b, msg2, range(3))
-            self.msg3 = msg3
+        def __init__(self, a, b):
+            self._bs_init(a, b, range(3))
 
     cls = decorator(C)
-    c = cls(5, "Hi", 0xff, "No", "Ok")
+    c = cls(5, 0xff)
 
     assert c.a.value == 5
     assert c.b.value == 0xff
     assert c.c == list(range(3))
-    assert c.msg1 == "Hi"
-    assert c.msg2 == "No"
-    assert c.msg3 == "Ok"
 
-@pytest.mark.parametrize('decorator', decorators_without_format)
-def test_valid_class_inheritance_custom_implementation(BufferClassFixture, decorator):
-    @binary_struct
-    class BiggerBuffer(BufferClassFixture):
-        def __init__(self, size, buffer):
-            self.BiggerBuffer__init__(size * 2, buffer * 2)
-
-    cls = decorator(BiggerBuffer)
-    a = cls(5, list(range(3)))
-
-    assert a.size.value == 10
-    assert a.buf == list(range(3)) * 2 + [0] * 26
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_multiple_inheritance_custom_implementation(decorator):
@@ -116,7 +106,7 @@ def test_valid_class_multiple_inheritance_custom_implementation(decorator):
         a: uint8_t = 0xff
 
         def __bytes__(self):
-            return b'A' + self.A__bytes__()
+            return b'A' + A._bs_bytes(self)
 
     class B:
         def __bytes__(self):
@@ -127,11 +117,12 @@ def test_valid_class_multiple_inheritance_custom_implementation(decorator):
         c: uint8_t = 0
 
         def __bytes__(self):
-            return b'C' + self.C__bytes__()
+            return b'C' + C._bs_bytes(self)
 
     cls = decorator(C)
 
     assert bytes(cls()) == b'CBA\xff\x00'
+
 
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_custom_implementation_size_property(decorator):
@@ -148,6 +139,7 @@ def test_valid_class_custom_implementation_size_property(decorator):
 
     assert a.size_in_bytes == 12
 
+
 @pytest.mark.parametrize('decorator', decorators_without_format)
 def test_valid_class_mixed_chain(decorator):
     @binary_struct
@@ -155,9 +147,9 @@ def test_valid_class_mixed_chain(decorator):
         a: uint8_t
 
     class B(A):
-        def __init__(self, a):
-            # This is required for now
-            A.__init__(self, a * 5)
+        # This is not a binary structs, its init will be skipped
+        def __init__(self):
+            assert False
 
     @binary_struct
     class C(B):
@@ -166,5 +158,26 @@ def test_valid_class_mixed_chain(decorator):
     cls = decorator(C)
     c = cls(1, 2)
 
-    assert c.a.value == 5
+    assert c.a.value == 1
     assert c.b.value == 2
+
+
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_custom_init_deserialize_inherited(decorator, CustomInitClsFixture):
+    @binary_struct
+    class B(CustomInitClsFixture):
+        b: uint8_t
+
+    cls = decorator(B)
+    cls.deserialize(bytearray(b'XD'))
+
+
+@pytest.mark.parametrize('decorator', decorators_without_format)
+def test_valid_class_custom_init_deserialize_nested(decorator, CustomInitClsFixture):
+    @binary_struct
+    class B:
+        a: CustomInitClsFixture
+        b: uint8_t
+
+    cls = decorator(B)
+    cls.deserialize(bytearray(b'XD'))

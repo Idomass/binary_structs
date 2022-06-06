@@ -1,11 +1,11 @@
 import pytest
 
 from copy import deepcopy
-from binary_structs import MaxSizeExceededError
 from conftest import EmptyClass, empty_decorator, test_structs
 
 from binary_structs import binary_struct, big_endian, little_endian,    \
-                           le_uint8_t, le_uint8_t, le_uint32_t
+                           le_uint8_t, le_uint8_t, le_uint32_t,         \
+                           be_uint8_t, be_uint32_t
 
 
 @pytest.mark.skip(reason='#TODO Cant figure a way to pass it for now')
@@ -30,13 +30,6 @@ def test_valid_size_empty(EmptyClassFixture):
     a = EmptyClassFixture()
 
     assert a.size_in_bytes == 0
-
-def test_valid_size_dynamic(DynamicClassFixture):
-    a = DynamicClassFixture(5, [1, 2, 3])
-
-    assert a.size_in_bytes == 4
-    a.buf.append(90)
-    assert a.size_in_bytes == 5
 
 # Equal tests
 available_decorators = [empty_decorator, big_endian, little_endian]
@@ -99,20 +92,8 @@ def test_valid_item_assignment_simple(SimpleClassFixture):
     assert isinstance(a.a, le_uint8_t)
     assert a.a == 58
 
-def test_valid_item_assignment_dyn_buf(DynamicClassFixture):
-    a = DynamicClassFixture()
-
-    a.buf = range(9)
-    assert a.buf == list(range(9))
-
-def test_valid_item_assignment_dyn_buf_bytes(DynamicClassFixture):
-    a = DynamicClassFixture()
-
-    a.buf = bytes(range(17))
-    assert a.buf == list(range(17))
-
 def test_invalid_item_assignement_wrong_type(DynamicClassFixture):
-    a = DynamicClassFixture()
+    a = DynamicClassFixture(buf=[1, 2])
 
     with pytest.raises(TypeError):
         a.buf = ['1', '2']
@@ -126,7 +107,7 @@ def test_valid_item_assignment_bin_buf(BufferClassFixture):
 def test_invalid_item_assignment_bin_buf_too_big(BufferClassFixture):
     a = BufferClassFixture()
 
-    with pytest.raises(MaxSizeExceededError):
+    with pytest.raises(IndexError):
         a.buf = range(99)
 
 def test_valid_item_assignment_bin_buf_bytes(BufferClassFixture):
@@ -138,7 +119,7 @@ def test_valid_item_assignment_bin_buf_bytes(BufferClassFixture):
 def test_invalid_item_assignment_bin_buf_bytes_too_big(BufferClassFixture):
     a = BufferClassFixture()
 
-    with pytest.raises(MaxSizeExceededError):
+    with pytest.raises(IndexError):
         a.buf = bytes(range(99))
 
 def test_valid_item_assignment_nested(NestedClassFixture):
@@ -180,6 +161,7 @@ def test_invalid_item_assignment_nested_kwargs(NestedClassFixture):
     with pytest.raises(TypeError):
         a.buffer = {'bad': 32}
 
+
 def test_valid_dict_conversion_simple(SimpleClassFixture):
     assert dict(SimpleClassFixture(a=7)) == {'a': le_uint8_t(7)}
 
@@ -194,6 +176,22 @@ def test_valid_dict_conversion_inheritence(InheritedClassFixture):
     inherited = InheritedClassFixture(5, range(7), 9)
 
     assert dict(inherited) == {'size': le_uint32_t(5), 'buf': list(range(7)) + [0] * 25, 'magic': le_uint32_t(9)}
+
+
+def test_valid_dict_conversion_simple_big(SimpleClassFixture):
+    assert dict(big_endian(SimpleClassFixture)(a=7)) == {'a': be_uint8_t(7)}
+
+
+def test_valid_dict_conversion_nested_big(NestedClassFixture, BufferClassFixture):
+    nested = big_endian(NestedClassFixture)(buffer=[5, range(3)], magic=42)
+
+    assert dict(nested) == {'buffer': big_endian(BufferClassFixture)(5, range(3)), 'magic': be_uint32_t(42)}
+
+
+def test_valid_dict_conversion_inheritence_big(InheritedClassFixture):
+    inherited = big_endian(InheritedClassFixture)(5, range(7), 9)
+
+    assert dict(inherited) == {'size': be_uint32_t(5), 'buf': list(range(7)) + [0] * 25, 'magic': be_uint32_t(9)}
 
 
 def test_valid_class_static_size(SimpleClassFixture):
@@ -227,8 +225,8 @@ def test_valid_class_2_buffers_dynamics_types_not_corrupted():
         buf1: [le_uint8_t]
         buf2: [le_uint32_t]
 
-    assert A.buf1_type.UNDERLYING_TYPE is le_uint8_t
-    assert A.buf2_type.UNDERLYING_TYPE is le_uint32_t
+    assert A.buf1_type.element_type is le_uint8_t
+    assert A.buf2_type.element_type is le_uint32_t
 
 
 def test_valid_class_2_buffers_dynamics_are_different():
@@ -250,7 +248,18 @@ def test_valid_class_2_binary_buffers_sizes_and_types_not_corrupted():
 
     a = A()
 
-    assert A.buf1_type.UNDERLYING_TYPE is le_uint8_t
-    assert A.buf2_type.UNDERLYING_TYPE is le_uint32_t
+    assert A.buf1_type.element_type is le_uint8_t
+    assert A.buf2_type.element_type is le_uint32_t
     assert len(a.buf1) == 32
     assert len(a.buf2) == 16
+
+
+def test_valid_dynamic_class_type_helper_updates(DynamicClassFixture):
+    arr1 = DynamicClassFixture()
+    assert isinstance(arr1.buf, arr1.buf_type)
+
+    arr2 = DynamicClassFixture(buf=[1, 2, 3])
+    assert isinstance(arr2.buf, arr2.buf_type)
+
+    assert arr2.buf != arr1.buf
+    assert arr1.buf_type is not arr2.buf_type

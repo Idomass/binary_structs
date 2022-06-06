@@ -3,12 +3,14 @@ This file exports the big_endian and little_endian decorators,
 They are used to convert a BinaryStruct endiannes
 """
 
+import ctypes
 import logging
-
 from copy import deepcopy
+from typing import Tuple
+
 from binary_structs.utils import *
 from binary_structs.binary_struct import binary_struct, _is_binary_struct
-from binary_structs.utils.buffers.typed_buffer import BufferField
+from binary_structs.utils.buffers.binary_buffer import BufferField
 
 
 def _convert_primitive_type_endianness(kind: PrimitiveTypeField, endianness: Endianness) -> PrimitiveTypeField:
@@ -43,12 +45,13 @@ def _convert_buffer(buffer: type, endianness: Endianness) -> type:
     Convert a TypedBuffer/BinaryBuffer endianness
     """
 
-    if buffer.__name__ == 'TypedBuffer':
-        return new_typed_buffer(buffer.UNDERLYING_TYPE)
+    new_element_type = _convert_primitive_type_endianness(buffer.element_type, endianness)
+
+    if not isinstance(buffer, ctypes.Array):
+        return new_typed_buffer(new_element_type)
 
     else:
-        # BinaryBuffer
-        return new_binary_buffer(buffer.UNDERLYING_TYPE, buffer.static_size)
+        return new_binary_buffer(new_element_type, buffer.static_size)
 
 
 def _convert_class_annotations_endianness(cls, endianness: Endianness):
@@ -65,7 +68,7 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
         if issubclass(kind, PrimitiveTypeField):
             new_kind = _convert_primitive_type_endianness(kind, endianness)
 
-        elif issubclass(kind, BinaryField):
+        elif hasattr(kind, '_is_binary_field'):
             new_kind = _convert_parents_classes(kind, endianness)
 
         else:
@@ -80,13 +83,13 @@ def _convert_class_annotations_endianness(cls, endianness: Endianness):
             annotations[annotation_name] = new_kind
 
 
-def _convert_endianness(cls: BinaryField, new_bases: tuple[type], endianness: Endianness):
+def _convert_endianness(cls: type, new_bases: Tuple[type], endianness: Endianness):
     """
     Convert the endianness of a single class to the given endianness.
     The class is being rebuilt in order to not destroy the old one.
     """
 
-    logging.debug(f'Converting endianness for {cls}')
+    logging.debug(f'Converting endianness for {cls} at {hex(id(cls))}')
 
     # A field is consider valid if it is not a generated function
     is_field_valid = lambda field: not hasattr(field, 'bs_generated_func')
@@ -116,11 +119,10 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
 
     new_bases = []
     for base in cls.__bases__:
-        if issubclass(base, BinaryField):
+        if hasattr(base, '_is_binary_field'):
             new_bases.append(_convert_parents_classes(base, endianness))
 
         else:
-            # Ignore non-BinaryFields
             new_bases.append(base)
 
     if _is_binary_struct(cls):
@@ -129,16 +131,14 @@ def _convert_parents_classes(cls, endianness: Endianness = Endianness.HOST):
     elif cls is not BufferField and issubclass(cls, BufferField):
         return _convert_buffer(cls, endianness)
 
-    elif cls is BinaryField:
-        return BinaryField
-
     else:
+        # Rebuild the class, because it's parents might have been changed
         return type(cls.__name__, tuple(new_bases) or (object,), dict(cls.__dict__))
 
 
 def endian_decorator(cls, endianness: Endianness):
     if not _is_binary_struct(cls):
-        raise TypeError('Given class is not a BinaryField!')
+        raise TypeError('Given class cannot be used in a binary struct!')
 
     def wrap(cls):
         return _convert_parents_classes(cls, endianness)
@@ -149,17 +149,17 @@ def endian_decorator(cls, endianness: Endianness):
     return wrap(cls)
 
 
-def little_endian(cls: BinaryField = None):
+def little_endian(cls: type = None):
     """
-    Convert a BinaryField class to little_endian
+    Convert a binary struct class to little_endian
     """
 
     return endian_decorator(cls, Endianness.LITTLE)
 
 
-def big_endian(cls: BinaryField = None):
+def big_endian(cls: type = None):
     """
-    Convert a BinaryField class to big_endian
+    Convert a binary struct class to big_endian
     """
 
     return endian_decorator(cls, Endianness.BIG)

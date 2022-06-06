@@ -76,6 +76,10 @@ class DefaultBinaryBufferClass:
     buf: [le_uint8_t, 10] = range(5)
 
 @binary_struct
+class DefaultBinaryBufferClass:
+    buf: [le_uint8_t, 10] = range(5)
+
+@binary_struct
 class DefaultNestedClass:
     nested: BufferClass = BufferClass(5, range(3))
 
@@ -98,7 +102,7 @@ default_structs = [
     DefaultNestedClass([5, range(3)]),
     DefaultNestedArgsClass([5, range(7)]),
     DefaultNestedKWargsClass(nested={'size': 5}),
-    DefaultInheritedClass([5, range(3)]),
+    DefaultInheritedClass([5, range(3)])
 ]
 
 # List for parameterize tests
