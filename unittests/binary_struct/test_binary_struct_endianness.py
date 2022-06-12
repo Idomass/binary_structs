@@ -265,10 +265,10 @@ def test_valid_class_init_raw_binary_buffer(decorator):
 def test_valid_class_type_helpers_changed():
     @binary_struct
     class Old:
-        a: uint8_t
+        a: uint16_t
 
     New = big_endian(Old)
 
-    assert Old.a_type is uint8_t
+    assert Old.a_type is uint16_t
     assert New.a_type is not Old.a_type
-    assert New.a_type is be_uint8_t
+    assert New.a_type is be_uint16_t

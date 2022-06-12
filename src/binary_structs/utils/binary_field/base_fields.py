@@ -141,14 +141,6 @@ class le_uint64_t:
     pass
 
 @_generate_integer_class
-class be_int8_t:
-    pass
-
-@_generate_integer_class
-class be_uint8_t:
-    pass
-
-@_generate_integer_class
 class be_int16_t:
     pass
 
