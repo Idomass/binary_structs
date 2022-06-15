@@ -1,7 +1,7 @@
 import pytest
 
 from copy import deepcopy
-from conftest import EmptyClass, empty_decorator, test_structs
+from conftest import BufferClass, EmptyClass, empty_decorator, test_structs
 
 from binary_structs import binary_struct, big_endian, little_endian,    \
                            le_uint8_t, le_uint8_t, le_uint32_t,         \
@@ -263,3 +263,88 @@ def test_valid_dynamic_class_type_helper_updates(DynamicClassFixture):
 
     assert arr2.buf != arr1.buf
     assert arr1.buf_type is not arr2.buf_type
+
+
+# Buffers of classes
+@pytest.fixture
+def BinaryStructBufferClass(BufferClassFixture):
+    @binary_struct
+    class BufferBufferClass:
+        buf:    [BufferClassFixture, 10]
+
+    return BufferBufferClass
+
+
+def test_valid_buffer_class_with_binary_struct_build(BinaryStructBufferClass, BufferClassFixture):
+    assert BinaryStructBufferClass.static_size == BufferClassFixture.static_size * 10
+
+
+def test_valid_buffer_class_with_binary_struct_init(BinaryStructBufferClass, BufferClassFixture):
+    buf_cls = BinaryStructBufferClass(buf=[BufferClassFixture(5)])
+
+    for x in buf_cls.buf:
+        assert isinstance(x, BufferClassFixture)
+
+    assert buf_cls.buf[0].size.value == 5
+
+
+def test_valid_buffer_class_with_binary_struct_init_incompatible(BinaryStructBufferClass, SimpleClassFixture):
+    with pytest.raises(TypeError):
+        BinaryStructBufferClass(SimpleClassFixture(5))
+
+
+def test_valid_buffer_class_with_binary_struct_init_args(BinaryStructBufferClass, BufferClassFixture):
+    buf_cls = BinaryStructBufferClass(buf=[[5, range(3)], [2, [6, 43]]])
+
+    assert buf_cls.buf[0] == BufferClassFixture(5, range(3))
+    assert buf_cls.buf[1] == BufferClassFixture(2, [6, 43])
+
+def test_valid_buffer_class_with_binary_struct_init_kwargs(BinaryStructBufferClass, BufferClassFixture):
+    buf_cls = BinaryStructBufferClass(buf=[{'size': 5, 'buf': range(3)}, {'size': 2, 'buf': [6, 43]}])
+
+    assert buf_cls.buf[0] == BufferClassFixture(5, range(3))
+    assert buf_cls.buf[1] == BufferClassFixture(2, [6, 43])
+
+
+def test_valid_buffer_class_with_binary_struct_bytes(BinaryStructBufferClass, BufferClassFixture):
+    element_cls = BufferClassFixture(5, range(4))
+    buf_cls = BinaryStructBufferClass(buf=[element_cls])
+
+    assert bytes(buf_cls) == bytes(element_cls) + b'\x00' * BufferClassFixture.static_size * (len(buf_cls.buf) - 1)
+
+def test_valid_buffer_class_with_binary_struct_eq(BinaryStructBufferClass):
+    buf_cls1 = BinaryStructBufferClass(buf=[[5, range(2)]])
+    buf_cls2 = BinaryStructBufferClass(buf=[[5, range(2)]])
+
+    assert buf_cls1 == buf_cls2
+
+
+def test_valid_buffer_class_with_binary_struct_ne(BinaryStructBufferClass):
+    buf_cls1 = BinaryStructBufferClass(buf=[[5, range(2)]])
+    buf_cls2 = BinaryStructBufferClass(buf=[[5, range(3)]])
+
+    assert buf_cls1 != buf_cls2
+
+
+def test_invalid_buffer_class_with_binary_struct_deserialize_too_small(BinaryStructBufferClass):
+    with pytest.raises(AssertionError):
+        BinaryStructBufferClass.deserialize(b'')
+
+
+def test_valid_buffer_class_with_binary_struct_deserialize(BinaryStructBufferClass, BufferClassFixture):
+    buf_cls1 = BinaryStructBufferClass(buf=[[0, range(12)]])
+    buf_cls2 = BinaryStructBufferClass.deserialize(bytearray(bytes(buf_cls1)))
+
+    assert buf_cls2 == buf_cls1
+
+    # Make sure they don't share memory
+    buf_cls1.buf[0].size = 0xff
+
+    assert buf_cls1 != buf_cls2
+
+
+@pytest.mark.parametrize('decorator', available_decorators)
+def test_valid_buffer_class_with_binary_struct_type_endianess(decorator, BinaryStructBufferClass):
+    new_cls = decorator(BinaryStructBufferClass)
+
+    new_cls()
