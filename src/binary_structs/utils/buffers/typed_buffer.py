@@ -28,7 +28,7 @@ def new_typed_buffer(underlying_type: type) -> type:
 
         @classmethod
         def deserialize(cls, buf) -> type:
-            num_of_elements = len(buf) // underlying_type.size_in_bytes
+            num_of_elements = len(buf) // underlying_type.static_size
 
             new_cls = type(f'TypedBuffer_{underlying_type.__name__}_{num_of_elements}',
                         (new_binary_buffer(underlying_type, num_of_elements), ),

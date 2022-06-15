@@ -127,7 +127,9 @@ def _init_var(name: str, field_type: type, globals: dict, default_value: type) -
 
     # Generate function text for the given type
     if issubclass(field_type, BufferField):
-        init_var =  [f'{name} = {new_type_name}(*{name} or {default_value_name} or [])']
+        # Check if the correct type or a binary buffer was passed, to avoid overhead
+        init_var =  [f'if not isinstance({name}, {new_type_name}) and not "BinaryBuffer" in getattr(type({name}), "__name__", ""):']
+        init_var += [f'    {name} = {new_type_name}(*{name} or {default_value_name} or [])']
         init_var += [f'object.__setattr__(self, "{name}", {name})']
 
         # If a buffer with an undertermined size was passed, update the type helper

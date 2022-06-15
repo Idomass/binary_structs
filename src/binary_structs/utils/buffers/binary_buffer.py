@@ -21,10 +21,62 @@ def new_binary_buffer(underlying_type: type, size: int):
     A binary buffer is a wrapper to ctypes buffers
     """
 
+    if hasattr(underlying_type, f'_{underlying_type.__name__}__is_binary_struct'):
+        # PATCH, return a tuple with empty instances in order to support a list of binary structs API
+        class BinaryTuple(tuple):
+            _is_binary_field = True
+            element_type = underlying_type
+            static_size = size * underlying_type.static_size
+            size_in_bytes = size * underlying_type.static_size
+
+            def __new__(cls, *iterable, **kwargs):
+                init_arr = []
+
+                for element in iterable:
+                    if isinstance(element, underlying_type):
+                        init_arr.append(element)
+
+                    # Support args initialization
+                    elif isinstance(element, list):
+                        init_arr.append(underlying_type(*element))
+
+                    # Support kwargs initialization
+                    elif isinstance(element, dict):
+                        init_arr.append(underlying_type(**element))
+
+                    else:
+                        # Try to build new element
+                        init_arr.append(underlying_type(element))
+
+                # Fill the rest of the buffer with empty instances, by calling _bs_init
+                for _ in range(len(init_arr), size):
+                    new_instance = underlying_type.__new__(underlying_type)
+                    new_instance._bs_init()
+                    init_arr.append(new_instance)
+
+                return super().__new__(cls, init_arr)
+
+
+            def __bytes__(self) -> bytes:
+                return b''.join(bytes(x) for x in self)
+
+
+            @classmethod
+            def deserialize(cls, buf: bytearray):
+                assert len(buf) >= BinaryTuple.static_size, 'Given buffer is too small!'
+
+                init_arr = []
+                for element_index in range(0, len(buf), underlying_type.static_size):
+                    init_arr.append(underlying_type.deserialize(buf[element_index:]))
+
+                return cls.__new__(cls, *init_arr)
+
+        return BinaryTuple
+
     class BinaryBuffer(BufferField, underlying_type * size):
         _is_binary_field = True
         element_type = underlying_type
-        static_size = size
+        static_size = size * underlying_type.static_size
         size_in_bytes = size * underlying_type.static_size
 
 
