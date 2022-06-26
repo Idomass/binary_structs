@@ -66,7 +66,7 @@ def new_binary_buffer(underlying_type: type, size: int):
                 assert len(buf) >= BinaryTuple.static_size, 'Given buffer is too small!'
 
                 init_arr = []
-                for element_index in range(0, len(buf), underlying_type.static_size):
+                for element_index in range(0, BinaryTuple.static_size, underlying_type.static_size):
                     init_arr.append(underlying_type.deserialize(buf[element_index:]))
 
                 return cls.__new__(cls, *init_arr)

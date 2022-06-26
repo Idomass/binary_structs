@@ -331,7 +331,7 @@ def test_invalid_buffer_class_with_binary_struct_deserialize_too_small(BinaryStr
         BinaryStructBufferClass.deserialize(b'')
 
 
-def test_valid_buffer_class_with_binary_struct_deserialize(BinaryStructBufferClass, BufferClassFixture):
+def test_valid_buffer_class_with_binary_struct_deserialize(BinaryStructBufferClass):
     buf_cls1 = BinaryStructBufferClass(buf=[[0, range(12)]])
     buf_cls2 = BinaryStructBufferClass.deserialize(bytearray(bytes(buf_cls1)))
 
@@ -348,3 +348,11 @@ def test_valid_buffer_class_with_binary_struct_type_endianess(decorator, BinaryS
     new_cls = decorator(BinaryStructBufferClass)
 
     new_cls()
+
+
+def test_valid_buffer_class_with_binary_struct_type_deserialize_doesnt_change_size(BinaryStructBufferClass):
+    elements_arr = [BinaryStructBufferClass.buf_type.element_type(0, range(3))] * 20
+
+    buf_cls = BinaryStructBufferClass.deserialize(bytearray(b''.join(bytes(element) for element in elements_arr)))
+
+    assert len(buf_cls.buf) == 10
