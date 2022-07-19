@@ -70,6 +70,9 @@ def _generate_integer_class(cls):
     def __invert__(self) -> bytes:
         return bytes(~x & 0xff for x in self.memory)
 
+    def __str__(self) -> str:
+        return str(self.value)
+
 
     @property
     def memory(self) -> memoryview:
@@ -89,7 +92,8 @@ def _generate_integer_class(cls):
         '__and__': __and__,
         '__or__': __or__,
         '__xor__': __xor__,
-        '__invert__': __invert__
+        '__invert__': __invert__,
+        '__str__': __str__,
     }
 
     new_cls = type(cls.__name__, (ctypes_class, PrimitiveTypeField, ), int_dict)

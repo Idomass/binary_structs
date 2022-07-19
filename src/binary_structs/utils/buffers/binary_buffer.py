@@ -36,6 +36,9 @@ def new_binary_buffer(underlying_type: type, size: int):
                     if isinstance(element, underlying_type):
                         init_arr.append(element)
 
+                    elif getattr(type(element), 'binary_fields', {}) == underlying_type.binary_fields:
+                        init_arr.append(element)
+
                     # Support args initialization
                     elif isinstance(element, list):
                         init_arr.append(underlying_type(*element))
@@ -59,6 +62,10 @@ def new_binary_buffer(underlying_type: type, size: int):
 
             def __bytes__(self) -> bytes:
                 return b''.join(bytes(x) for x in self)
+
+
+            def __str__(self) -> str:
+                return str(bytes(self))
 
 
             @classmethod
@@ -103,6 +110,10 @@ def new_binary_buffer(underlying_type: type, size: int):
                 return new_binary_buffer(underlying_type, len(as_list))(*as_list)
 
             return super().__getitem__(index_or_slice)
+
+
+        def __str__(self) -> str:
+            return str(bytes(self))
 
 
     BinaryBuffer.deserialize = BinaryBuffer.from_buffer
